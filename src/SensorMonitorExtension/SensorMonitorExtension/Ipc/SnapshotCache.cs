@@ -9,6 +9,7 @@ namespace SensorMonitorExtension.Ipc;
 /// 懒启动（F5）：首次 EnsureStarted 才起 Timer。
 /// Host 未运行时走静默通道自动拉起，全局 30s 节流（D7，从旧 SensorDockBand 迁来）。
 /// </summary>
+// one-shot 重排（同 Host 侧 F6）：上一轮完成才排下一轮，杜绝回调重叠。
 internal static class SnapshotCache
 {
     private const int RefreshMs = 2000;
@@ -25,7 +26,7 @@ internal static class SnapshotCache
     public static void EnsureStarted()
     {
         lock (Gate)
-            _timer ??= new Timer(_ => Refresh(), null, 0, RefreshMs);
+            _timer ??= new Timer(_ => Refresh(), null, 0, Timeout.Infinite);
     }
 
     private static void Refresh()
@@ -45,9 +46,14 @@ internal static class SnapshotCache
             Current = snapshot;
             Updated?.Invoke();
         }
-        catch
+        catch (Exception ex)
         {
             // Timer 线程未处理异常会带崩扩展进程（F3）：任何异常都不许出去。
+            System.Diagnostics.Debug.WriteLine($"SnapshotCache 刷新失败: {ex}");
+        }
+        finally
+        {
+            try { _timer?.Change(RefreshMs, Timeout.Infinite); } catch (ObjectDisposedException) { }
         }
     }
 }
