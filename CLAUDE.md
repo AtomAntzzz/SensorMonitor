@@ -37,6 +37,8 @@
 5. 提权管道服务端必须显式 `PipeSecurity` 放开 Authenticated Users，否则非提权扩展连不上。
 6. **Host 运行时锁死自己的 `bin/`**：重建/跑测试前先停 Host（管理员终端 `taskkill /f /im SensorMonitor.Host.exe`），
    或用 `--artifacts-path` 输出到独立目录绕开（agent 会话无提权时的标准做法）。
+   **扩展同理**：松散注册的扩展被 CmdPal 激活后进程常驻，锁死扩展 `bin/`——CLI 重建前先
+   `taskkill /f /im SensorMonitorExtension.exe`（无需提权；`scripts/setup.ps1` 阶段 4 已内置）。
 7. 自动拉起遵守 D7：自动路径只走计划任务静默通道，UAC 只允许出现在用户显式点击。
 
 ## 常用命令
