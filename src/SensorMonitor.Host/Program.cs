@@ -32,7 +32,8 @@ using var refreshTimer = new Timer(_ =>
     catch (Exception ex) { Console.Error.WriteLine($"刷新失败: {ex.Message}"); }
 }, null, RefreshMs, RefreshMs);
 
-using var server = new PipeJsonServer(PipeName, () => Volatile.Read(ref cached));
+using var server = new PipeJsonServer(PipeName, () => Volatile.Read(ref cached),
+    log: Console.Error.WriteLine);
 server.Start();
 
 Console.WriteLine($"SensorMonitor.Host 运行中，管道: {PipeName}，刷新间隔: {RefreshMs}ms。Ctrl+C 退出。");
