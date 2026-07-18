@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "SensorMonitorExtension (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true
+    },
+    "SensorMonitorExtension (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
