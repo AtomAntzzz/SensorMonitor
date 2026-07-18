@@ -6,7 +6,7 @@ using SensorMonitor.Host.Model;
 using SensorMonitor.Host.Sensors;
 
 const string PipeName = "SensorMonitor.Host.v1";
-const int RefreshMs = 2000;
+const int RefreshMs = 1000;
 
 // 调试分支：打印一次传感器快照后退出（放在建 Mutex 之前，不占单实例名额）。
 // WinExe 无自带控制台（D8），贴附父进程控制台以保住从终端启动时的输出。
