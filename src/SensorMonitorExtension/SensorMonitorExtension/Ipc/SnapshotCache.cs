@@ -26,7 +26,13 @@ internal static class SnapshotCache
     public static void EnsureStarted()
     {
         lock (Gate)
-            _timer ??= new Timer(_ => Refresh(), null, 0, Timeout.Infinite);
+        {
+            if (_timer is null)
+            {
+                _timer = new Timer(_ => Refresh(), null, Timeout.Infinite, Timeout.Infinite);
+                _timer.Change(0, Timeout.Infinite);   // 赋值完成后再放行首轮（防首轮跑赢赋值致 Change 空跳）
+            }
+        }
     }
 
     private static void Refresh()
