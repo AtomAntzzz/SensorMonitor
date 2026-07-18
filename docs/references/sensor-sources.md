@@ -44,4 +44,32 @@
 
 > 运行 `dotnet run --project src/SensorMonitor.Host -- --dump`（管理员）后，把本机关键传感器的 `Id / Hardware / Name / Type` 记录在此，供 Task 7 的默认匹配规则使用。
 
-（待填）
+### 实测机型（2026-07-18，管理员运行，**PawnIO 未安装**）
+
+- CPU: 12th Gen Intel Core i9-12900K
+- GPU: NVIDIA GeForce RTX 3080 + Intel UHD Graphics 770（iGPU）
+- 主板：**未被 LHM 检测到**（`IsMotherboardEnabled=true` 但 `Computer.Hardware` 中无 Motherboard 项，也无任何 `/lpc/` SuperIO 传感器）
+
+**类型计数**：Load×57、Power×6、Temperature×3、Clock×3、Fan×2。
+
+**三项目标指标可见性**（结论：无 PawnIO 时只有 GPU 温度可用）：
+
+| 目标指标 | 状态 | 实测传感器 |
+|----------|------|-----------|
+| GPU 温度 | ✅ 可用 | `/gpu-nvidia/0/temperature/0` · "GPU Core" · Temperature（还有 GPU Hot Spot `…/2`、GPU Memory Junction `…/3`） |
+| CPU 频率 | ❌ 缺失 | `/intelcpu/0` 下 **无任何 Clock 传感器**（MSR 受 PawnIO 门控） |
+| 主板温度 | ❌ 缺失 | 无 Motherboard 硬件、无 `/lpc/` 传感器（SuperIO 受 PawnIO 门控） |
+| CPU 温度 | ❌ 缺失 | 无 `/intelcpu/…/temperature`（同上） |
+
+**全部 Clock 传感器**（注意：均为 GPU，无 CPU）：
+
+| Id | Name | Value |
+|----|------|-------|
+| `/gpu-nvidia/0/clock/0` | GPU Core | 1710 MHz |
+| `/gpu-nvidia/0/clock/4` | GPU Memory | 9502 MHz |
+| `/gpu-intel-integrated/…/clock/0` | GPU Core | 300 MHz |
+
+> ⚠️ **Task 7 匹配规则修正依据**：计划原始 `cpuClock` 规则 `Type=="Clock" && Name.Contains("Core")` 在本机会命中 **GPU Core**（1710/300 MHz），把 GPU 频率误显为 CPU 频率。必须把 CPU 频率匹配限定为 `Id.StartsWith("/intelcpu")`（或 `/amdcpu`）；本机该集合为空 → CPU 频率显示 `--` 属正确降级，而非 bug。
+>
+> ⚠️ **PawnIO 依赖**：要让 CPU 频率/CPU 温度/主板温度出现，需安装 PawnIO（见上文权限章节，属后续路线 R5）。MVP 在无 PawnIO 机器上 Dock 只能实显 GPU 温度，其余显示 `--`。
+
