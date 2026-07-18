@@ -10,10 +10,11 @@
 - ✅ MVP 全链路已在实机验证过（Dock 实时显示 CPU 频率/CPU 温度/GPU 温度）。
 - ✅ 加固：管道单连接超时、刷新防重入、Host 无窗口化+文件日志（`%ProgramData%\SensorMonitor\host.log`）、
   扩展防崩+数据过期提示、计划任务静默提权（`--install-task`）、band 懒启动、传感器浏览页。
-- ⏳ 待桌面手动验证：VS Deploy 新扩展 + Reload、`--install-task` 注册与静默拉起、无窗口 Host 观察
-  （清单见 `docs/plans/2026-07-18-post-mvp-hardening.md` 各 task 的验证步骤）。
+- ✅ 2026-07-19 `scripts/setup.ps1` 实跑验证：CLI 部署（免 VS）、`--install-task` 静默拉起、
+  无窗口 Host + host.log、PawnIO 免重启读全 135 传感器。剩余待验证：Dock band 显示、登录全链路。
 
-后续优化路线（R2/R4/R6/R7/R8）见 `docs/plans/2026-07-18-post-mvp-hardening.md` 末尾。
+后续路线与产品诉求（A1 控件拆分/A2 MSIX 打包/A3 次级列表 + R 系列）见
+`docs/plans/2026-07-18-verification-and-next-phase.md`。
 
 ## 一句话架构
 
