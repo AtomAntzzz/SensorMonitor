@@ -20,14 +20,21 @@ namespace SensorMonitorExtension.Dock;
 /// </summary>
 internal sealed partial class SensorDockBand : ListItem, IDisposable
 {
-    private readonly Timer _timer;
-    private bool _autoLaunchAttempted;
+    private Timer? _timer;
+    private readonly object _gate = new();
+    private DateTimeOffset _lastAutoLaunch = DateTimeOffset.MinValue;
 
     public SensorDockBand()
         : base(new Commands.LaunchHostCommand()) // 点击 band 项即可手动拉起 Host
     {
         Title = "传感器: 连接中…";
-        _timer = new Timer(_ => Refresh(), null, 0, 2000);
+    }
+
+    /// <summary>懒启动（F5）：进入 Dock 流程（GetDockBands 被调用）才开始轮询。</summary>
+    public void EnsureStarted()
+    {
+        lock (_gate)
+            _timer ??= new Timer(_ => Refresh(), null, 0, 2000);
     }
 
     private void Refresh()
@@ -49,10 +56,11 @@ internal sealed partial class SensorDockBand : ListItem, IDisposable
         var snapshot = PipeSensorClient.TryFetch();
         if (snapshot?.Sensors is null)   // Sensors==null 的畸形 JSON 一并按未运行处理（F3）
         {
-            if (!_autoLaunchAttempted)
+            // D7：自动路径只走静默通道（未注册计划任务时静默失败），节流 30s 持续重试。
+            if (DateTimeOffset.Now - _lastAutoLaunch > TimeSpan.FromSeconds(30))
             {
-                _autoLaunchAttempted = true;   // 只自动尝试一次，避免用户拒绝 UAC 后被反复骚扰
-                Commands.LaunchHostCommand.TryLaunch();
+                _lastAutoLaunch = DateTimeOffset.Now;
+                Commands.LaunchHostCommand.TryLaunchSilent();
             }
             Title = "传感器: Host 未运行（点击启动）";
             Subtitle = "";
@@ -95,5 +103,5 @@ internal sealed partial class SensorDockBand : ListItem, IDisposable
         return $"CPU {Fmt(cpuClock, "MHz")} · CPU {Fmt(cpuTemp, "°C")} · GPU {Fmt(gpuTemp, "°C")}";
     }
 
-    public void Dispose() => _timer.Dispose();
+    public void Dispose() => _timer?.Dispose();
 }
