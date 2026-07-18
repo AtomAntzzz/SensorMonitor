@@ -31,6 +31,7 @@ public partial class SensorMonitorExtensionCommandsProvider : CommandProvider
     // Dock band（SDK ≥ 0.9.260303001 的 ICommandProvider3）：
     public override ICommandItem[]? GetDockBands()
     {
+        _band.EnsureStarted(); // 懒启动（F5）：未进 Dock 流程的用户不轮询、不触发自动拉起
         return [new WrappedDockItem([_band], "com.sensormonitor.dock", "Sensor Monitor")];
     }
 }

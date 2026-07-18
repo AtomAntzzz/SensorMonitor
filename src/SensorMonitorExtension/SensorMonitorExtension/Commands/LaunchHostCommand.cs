@@ -39,6 +39,9 @@ internal sealed partial class LaunchHostCommand : InvokableCommand
         catch (System.ComponentModel.Win32Exception) { return false; }
     }
 
+    /// <summary>D7：自动场景专用 —— 只走计划任务静默通道，绝不弹 UAC。</summary>
+    internal static bool TryLaunchSilent() => TryRunScheduledTask();
+
     private static bool TryRunScheduledTask()
     {
         try
