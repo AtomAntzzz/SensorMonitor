@@ -73,3 +73,20 @@
 >
 > ⚠️ **PawnIO 依赖**：要让 CPU 频率/CPU 温度/主板温度出现，需安装 PawnIO（见上文权限章节，属后续路线 R5）。MVP 在无 PawnIO 机器上 Dock 只能实显 GPU 温度，其余显示 `--`。
 
+### 同机型（2026-07-18，**已安装 PawnIO 后**复测）
+
+装 PawnIO 后传感器从 71 项增到 135 项。变化：
+
+| 目标指标 | 状态 | 实测传感器 |
+|----------|------|-----------|
+| CPU 频率 | ✅ 解锁 | `/intelcpu/0` 出现 Clock 传感器；`Id.StartsWith("/intelcpu")` 规则命中 |
+| CPU 温度 | ✅ 解锁 | `/intelcpu/0/temperature/18` · "CPU Package" = 84°（另有 "Core Max"/"Core Average"/逐核 P-Core/E-Core 温度） |
+| 内存温度 | ✅ 解锁 | `/memory/dimm/{1,3}/temperature/0` · "DIMM #n" ≈ 44° |
+| GPU 温度 | ✅ 一直可用 | `/gpu-nvidia/0/temperature/0` · "GPU Core" |
+| **主板温度** | ❌ **仍缺失** | 装 PawnIO 后**依然无 Motherboard 硬件、无 `/lpc/` 传感器** —— LHM 0.9.6 未识别本板 SuperIO 芯片（非 PawnIO 门控，是芯片支持问题，改代码解决不了） |
+
+> **Dock 第三格决策（D6 修订）**：因本机主板温度硬件层不存在，第三格由「主板温度」改为
+> **CPU 温度（CPU Package，回退该 CPU 首个温度传感器）**。Dock 最终形态：
+> `CPU {频率}MHz · CPU {温度}°C · GPU {温度}°C`。匹配规则见 `SensorDockBand.FormatLine`。
+> 换一块 LHM 支持 SuperIO 的主板即可恢复真·主板温度（把第三格改回按清单精确匹配）。
+
