@@ -19,6 +19,9 @@ if (args is ["--dump"])
     return 0;
 }
 
+if (args is ["--install-task"]) return TaskInstaller.Install();
+if (args is ["--uninstall-task"]) return TaskInstaller.Uninstall();
+
 using var singleInstance = new Mutex(initiallyOwned: true, "Global\\SensorMonitor.Host", out var isNew);
 if (!isNew)
 {
