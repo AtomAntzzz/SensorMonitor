@@ -13,7 +13,7 @@ internal static class SlotCategories
 
     public static readonly SlotCategory[] All =
     [
-        new("cpuclock", "CPU 频率", "核心", "", "需 PawnIO 驱动", s =>
+        new("cpuclock", "CPU 频率", "核心", "\uEC4A", "需 PawnIO 驱动", s =>
         {
             var clocks = s.Where(r => r.Type == "Clock" && IsCpu(r)).OrderBy(r => r.Id).ToList();
             if (clocks.Count == 0) return [];
@@ -24,11 +24,11 @@ internal static class SlotCategories
             list.AddRange(clocks.Select(r => new SlotCandidate(r.Id, r.Name, r.Value, r.Unit, false)));
             return list;
         }),
-        new("cputemp", "CPU 温度", "温度点", "", "需 PawnIO 驱动", s =>
+        new("cputemp", "CPU 温度", "温度点", "\uE950", "需 PawnIO 驱动", s =>
             Temps(s, IsCpu, r => r.Name == "CPU Package")),
-        new("gputemp", "GPU 温度", "温度点", "", "无 GPU 温度传感器", s =>
+        new("gputemp", "GPU 温度", "温度点", "\uE7F4", "无 GPU 温度传感器", s =>
             Temps(s, r => r.Id.StartsWith("/gpu"), r => r.Name == "GPU Core")),
-        new("boardtemp", "主板温度", "温度点", "", "需 PawnIO 驱动", s =>
+        new("boardtemp", "主板温度", "温度点", "\uE9CA", "需 PawnIO 驱动", s =>
             Temps(s, r => r.Id.StartsWith("/lpc"), r => false)),  // 默认=排序首项
     ];
 
