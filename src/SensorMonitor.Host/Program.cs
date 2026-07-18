@@ -1,4 +1,6 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
+using SensorMonitor.Host;
 using SensorMonitor.Host.Ipc;
 using SensorMonitor.Host.Model;
 using SensorMonitor.Host.Sensors;
@@ -7,8 +9,10 @@ const string PipeName = "SensorMonitor.Host.v1";
 const int RefreshMs = 2000;
 
 // 调试分支：打印一次传感器快照后退出（放在建 Mutex 之前，不占单实例名额）。
+// WinExe 无自带控制台（D8），贴附父进程控制台以保住从终端启动时的输出。
 if (args is ["--dump"])
 {
+    AttachConsole(-1); // -1 = ATTACH_PARENT_PROCESS
     using var dumpReader = new LhmSensorReader();
     Console.WriteLine(JsonSerializer.Serialize(dumpReader.Read(),
         new JsonSerializerOptions { WriteIndented = true }));
@@ -18,7 +22,7 @@ if (args is ["--dump"])
 using var singleInstance = new Mutex(initiallyOwned: true, "Global\\SensorMonitor.Host", out var isNew);
 if (!isNew)
 {
-    Console.Error.WriteLine("SensorMonitor.Host 已在运行，退出。");
+    HostLog.Write("SensorMonitor.Host 已在运行，退出。");
     return 1;
 }
 
@@ -31,7 +35,7 @@ Timer refreshTimer = null!;
 refreshTimer = new Timer(_ =>
 {
     try { Volatile.Write(ref cached, reader.Read()); }
-    catch (Exception ex) { Console.Error.WriteLine($"刷新失败: {ex}"); }
+    catch (Exception ex) { HostLog.Write($"刷新失败: {ex}"); }
     finally
     {
         try { refreshTimer.Change(RefreshMs, Timeout.Infinite); }
@@ -41,11 +45,14 @@ refreshTimer = new Timer(_ =>
 using var _ = refreshTimer;
 
 using var server = new PipeJsonServer(PipeName, () => Volatile.Read(ref cached),
-    log: Console.Error.WriteLine);
+    log: HostLog.Write);
 server.Start();
 
-Console.WriteLine($"SensorMonitor.Host 运行中，管道: {PipeName}，刷新间隔: {RefreshMs}ms。Ctrl+C 退出。");
+HostLog.Write($"Host 启动，管道: {PipeName}，刷新间隔: {RefreshMs}ms。");
 var exit = new ManualResetEventSlim();
-Console.CancelKeyPress += (_, e) => { e.Cancel = true; exit.Set(); };
+Console.CancelKeyPress += (_, e) => { e.Cancel = true; exit.Set(); }; // 无控制台时不会触发，保留无害
 exit.Wait();
 return 0;
+
+[DllImport("kernel32.dll")]
+static extern bool AttachConsole(int dwProcessId);
