@@ -169,12 +169,56 @@ function Invoke-Stage2DevMode {
     Add-Result '2 开发者模式' '已完成' '已开启'
 }
 
+# 阶段 3：停占用 bin 的 Host（坑 #6）→ restore → build → test。测试红 = 硬失败。
+function Invoke-Stage3BuildTest {
+    Write-Step '阶段 3：Host 构建 + 测试'
+    if ($CheckOnly) {
+        $hasDotnet = [bool](Get-Command dotnet -ErrorAction SilentlyContinue)
+        Add-Result '3 构建测试' ($(if ($hasDotnet) {'已就绪'} else {'⚠'})) `
+            ($(if ($hasDotnet) {'dotnet 可用（未实跑）'} else {'dotnet 不在 PATH'}))
+        return
+    }
+    # -SkipInstall 时未经阶段 1 的 PATH 刷新；dotnet 找不到就再刷一次，仍没有则硬失败。
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+        Update-SessionPath
+        if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+            Add-Result '3 构建测试' '❌' 'dotnet 不在 PATH（SDK 刚装完可能需重开会话再跑）'
+            Show-Summary
+            exit 1
+        }
+    }
+    # 停运行中的 Host，避免锁 bin（坑 #6）。新机上进程必然不存在，taskkill 会写 stderr——
+    # 直接 2>$null 在 EAP=Stop 下必炸，须走 Invoke-Native。
+    Invoke-Native { taskkill /f /im SensorMonitor.Host.exe } | Out-Null
+    Push-Location $script:RepoRoot
+    try {
+        # 逐步校验退出码：restore 失败（如断网）若放任级联，最终会被误报成"test 失败"。
+        # 注：sln 只含 Host + Tests（扩展在独立 sln，阶段 4 单独带 -p:Platform=x64 构建），
+        # 整 sln 构建无需平台参数，已实测通过。
+        foreach ($step in @(
+            @{ Name = 'dotnet restore'; Cmd = { dotnet restore SensorMonitor.sln } },
+            @{ Name = 'dotnet build';   Cmd = { dotnet build SensorMonitor.sln -c Debug } },
+            @{ Name = 'dotnet test';    Cmd = { dotnet test tests/SensorMonitor.Host.Tests -c Debug } }
+        )) {
+            & $step.Cmd
+            if ($LASTEXITCODE -ne 0) {
+                Add-Result '3 构建测试' '❌' "$($step.Name) 退出码 $LASTEXITCODE"
+                Show-Summary
+                exit 1   # 构建/测试红是硬失败
+            }
+        }
+        Add-Result '3 构建测试' '已完成' '11 单测通过'
+    }
+    finally { Pop-Location }
+}
+
 function Main {
     Write-Step "SensorMonitor 引导开始（RepoRoot=$script:RepoRoot；CheckOnly=$CheckOnly；SkipInstall=$SkipInstall）"
     Invoke-Stage0Preflight
     Ensure-Elevated
     Invoke-Stage1Toolchain
     Invoke-Stage2DevMode
+    Invoke-Stage3BuildTest
     Show-Summary
 }
 
