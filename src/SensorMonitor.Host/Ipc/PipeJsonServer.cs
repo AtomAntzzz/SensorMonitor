@@ -9,18 +9,24 @@ namespace SensorMonitor.Host.Ipc;
 /// <summary>
 /// 极简单次问答管道服务：客户端写一行 "GET"，服务端回一行 JSON 快照后断开。
 /// ACL 放开 Authenticated Users —— Host 提权运行而扩展不提权，默认 ACL 会拒连。
+/// 单连接有独立超时：挂死客户端只浪费一个超时周期，不会阻塞后续请求（F1）。
 /// </summary>
 public sealed class PipeJsonServer : IDisposable
 {
     private readonly string _pipeName;
     private readonly Func<SensorSnapshot> _snapshotProvider;
+    private readonly TimeSpan _connectionTimeout;
+    private readonly Action<string> _log;
     private readonly CancellationTokenSource _cts = new();
     private Task? _loop;
 
-    public PipeJsonServer(string pipeName, Func<SensorSnapshot> snapshotProvider)
+    public PipeJsonServer(string pipeName, Func<SensorSnapshot> snapshotProvider,
+        TimeSpan? connectionTimeout = null, Action<string>? log = null)
     {
         _pipeName = pipeName;
         _snapshotProvider = snapshotProvider;
+        _connectionTimeout = connectionTimeout ?? TimeSpan.FromSeconds(5);
+        _log = log ?? (_ => { });
     }
 
     public void Start() => _loop = Task.Run(AcceptLoopAsync);
@@ -29,34 +35,54 @@ public sealed class PipeJsonServer : IDisposable
     {
         while (!_cts.IsCancellationRequested)
         {
-            var security = new PipeSecurity();
-            security.AddAccessRule(new PipeAccessRule(
-                new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null),
-                PipeAccessRights.ReadWrite, AccessControlType.Allow));
-
-            await using var server = NamedPipeServerStreamAcl.Create(
-                _pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-                PipeTransmissionMode.Byte, PipeOptions.Asynchronous,
-                inBufferSize: 0, outBufferSize: 0, security);
             try
             {
-                await server.WaitForConnectionAsync(_cts.Token);
-                using var reader = new StreamReader(server, leaveOpen: true);
-                await using var writer = new StreamWriter(server, leaveOpen: true) { AutoFlush = true };
-                var request = await reader.ReadLineAsync(_cts.Token);
-                if (request == "GET")
-                {
-                    await writer.WriteLineAsync(JsonSerializer.Serialize(_snapshotProvider()));
-                    // 让客户端读完并主动断开后我方再关管道。若服务端抢先 Dispose，
-                    // 客户端的 using StreamWriter 在 Dispose 时 flush 会撞上已关闭管道，
-                    // 抛 ObjectDisposedException（Task 7 的 PipeSensorClient 不捕获它）。
-                    // 再读一行：客户端关闭连接即得到 EOF(null)，此时我方安全关闭。
-                    await reader.ReadLineAsync(_cts.Token);
-                }
+                await ServeOneAsync();
             }
-            catch (OperationCanceledException) { break; }
-            catch (IOException) { /* 客户端异常断开：忽略，继续接受下一个连接 */ }
+            catch (OperationCanceledException) when (_cts.IsCancellationRequested) { break; }
+            catch (Exception ex)
+            {
+                // 单个连接的任何异常都不允许杀死接受循环（F2：否则 Host 活着但永不供数）。
+                _log($"管道连接处理失败: {ex}");
+            }
         }
+    }
+
+    private async Task ServeOneAsync()
+    {
+        var security = new PipeSecurity();
+        security.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null),
+            PipeAccessRights.ReadWrite, AccessControlType.Allow));
+
+        await using var server = NamedPipeServerStreamAcl.Create(
+            _pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous,
+            inBufferSize: 0, outBufferSize: 0, security);
+
+        // 等连接只受整体停机控制；连接建立后才开始计单连接超时。
+        await server.WaitForConnectionAsync(_cts.Token);
+
+        using var connCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+        connCts.CancelAfter(_connectionTimeout);
+        try
+        {
+            using var reader = new StreamReader(server, leaveOpen: true);
+            await using var writer = new StreamWriter(server, leaveOpen: true) { AutoFlush = true };
+            var request = await reader.ReadLineAsync(connCts.Token);
+            if (request == "GET")
+            {
+                await writer.WriteLineAsync(JsonSerializer.Serialize(_snapshotProvider()));
+                // 等客户端读完并主动断开（EOF）后再关管道，避免客户端 flush 撞已关闭管道
+                //（MVP Task 4 引入的收尾握手，保持不变）。
+                await reader.ReadLineAsync(connCts.Token);
+            }
+        }
+        catch (OperationCanceledException) when (!_cts.IsCancellationRequested)
+        {
+            // 单连接超时（挂死/不发请求/不关连接的客户端）：丢弃，循环继续（F1）。
+        }
+        catch (IOException) { /* 客户端异常断开：忽略 */ }
     }
 
     public void Dispose()
