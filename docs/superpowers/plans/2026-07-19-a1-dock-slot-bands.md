@@ -121,14 +121,14 @@ using System.Threading;
 namespace SensorMonitorExtension.Ipc;
 
 /// <summary>
-/// 全局快照缓存：一个 2s Timer、每周期一次管道请求，所有 Dock 控件读缓存。
+/// 全局快照缓存：一个 1s Timer、每周期一次管道请求，所有 Dock 控件读缓存。
 /// Host 管道串行处理，多控件各自轮询会互相排队（spec：架构）。
 /// 懒启动（F5）：首次 EnsureStarted 才起 Timer。
 /// Host 未运行时走静默通道自动拉起，全局 30s 节流（D7，从旧 SensorDockBand 迁来）。
 /// </summary>
 internal static class SnapshotCache
 {
-    private const int RefreshMs = 2000;
+    private const int RefreshMs = 1000;
     private static Timer? _timer;
     private static readonly object Gate = new();
     private static DateTimeOffset _lastAutoLaunch = DateTimeOffset.MinValue;
@@ -636,7 +636,7 @@ cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 
   类内右键轮换、选择持久化（LocalState slots.json）、共享 SnapshotCache 轮询；旧合并 band 已移除。
 ```
 
-"一句话架构"中 `Dock band 每 2s 轮询刷新` 改为 `Dock 槽位控件共享 SnapshotCache 每 2s 轮询刷新`。
+"一句话架构"中 `Dock band 每 2s 轮询刷新` 改为 `Dock 槽位控件共享 SnapshotCache 每 1s 轮询刷新`。
 
 - [ ] **Step 2: 路线计划标记**
 
