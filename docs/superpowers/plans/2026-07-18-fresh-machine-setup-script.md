@@ -384,20 +384,45 @@ cd "D:/Workspace/SensorMonitor" && git add scripts/setup.ps1 && git commit -m "f
 **Files:**
 - Modify: `scripts/setup.ps1`
 
-阶段 4 是无 VS 方案里唯一未实测环节：`dotnet build` 扩展 → 定位松散 `AppxManifest.xml` → `Add-AppxPackage -Register`。失败**不改退出码**，仅标 ⚠ 并打印原始错误 + 手动兜底。
+阶段 4 已实测通过（2026-07-18 spike）：`dotnet build -c Debug -p:Platform=x64` → 松散 `AppxManifest.xml`（在 `bin\x64\Debug\net9.0-windows10.0.26100.0\win-x64\` 下）→ `Add-AppxPackage -Register`（`Status: Ok`）。再 patch CmdPal `AllowExternalReload=true` 并 `x-cmdpal://reload` 触发**无 GUI 重载**。异常**不改退出码**，仅标 ⚠ 并打印原始错误 + 兜底。
 
-- [ ] **Step 1: 加部署函数**
+- [ ] **Step 1: 加部署 + 自动重载辅助函数**
 
 在阶段 3 函数后插入：
 
 ```powershell
-# 阶段 4：CLI 复刻 VS Deploy —— 构建扩展 MSIX 松散布局并注册。尽力而为。
+# CmdPal 外部重载：置 AllowExternalReload=true 并触发 x-cmdpal://reload（spike 已验证）。
+# 尽力而为：找不到 CmdPal / 设置文件缺失都只提示，不抛。
+function Invoke-CmdPalReload {
+    $pkg = Get-AppxPackage Microsoft.CommandPalette -ErrorAction SilentlyContinue
+    if (-not $pkg) {
+        Add-FollowUp 'CmdPal(Microsoft.CommandPalette) 未安装，无法自动重载；装 PowerToys/CmdPal 后手动 Reload'
+        return
+    }
+    $settings = Join-Path $env:LOCALAPPDATA `
+        "Packages\$($pkg.PackageFamilyName)\LocalState\settings.json"
+    if (Test-Path $settings) {
+        try {
+            $json = Get-Content $settings -Raw | ConvertFrom-Json
+            if ($json.AllowExternalReload -ne $true) {
+                $json.AllowExternalReload = $true
+                ($json | ConvertTo-Json -Depth 100) | Set-Content $settings -Encoding UTF8
+            }
+        } catch { Add-FollowUp "改 CmdPal AllowExternalReload 失败：$($_.Exception.Message)" }
+    } else {
+        Add-FollowUp 'CmdPal 尚未生成设置文件；先启动一次 CmdPal，或在设置里手动开"启用外部重新加载"'
+    }
+    # 触发重载（CmdPal 未运行时协议激活会拉起它，同样加载新扩展）。
+    Start-Process 'x-cmdpal://reload' -ErrorAction SilentlyContinue
+}
+
+# 阶段 4：CLI 复刻 VS Deploy —— 构建扩展松散布局、注册、自动重载。
 function Invoke-Stage4Deploy {
-    Write-Step '阶段 4：扩展部署（CLI，尽力而为）'
+    Write-Step '阶段 4：扩展部署（CLI，已实测）'
     $extProj = Join-Path $script:RepoRoot `
         'src\SensorMonitorExtension\SensorMonitorExtension\SensorMonitorExtension.csproj'
     if ($CheckOnly) {
-        Add-Result '4 扩展部署' '⚠' 'CLI 部署未实测；CheckOnly 不执行'
+        Add-Result '4 扩展部署' '已就绪' 'CLI 部署已实测可行；CheckOnly 不执行'
         return
     }
     try {
@@ -408,16 +433,17 @@ function Invoke-Stage4Deploy {
         }
         finally { Pop-Location }
 
-        # 定位构建产出的松散 AppxManifest.xml（单项目 MSIX Debug 布局）。
+        # 松散 AppxManifest.xml 在 RID 子目录 win-x64 下；优先取 x64。
         $outRoot = Join-Path (Split-Path $extProj) 'bin\x64\Debug'
         $manifest = Get-ChildItem -Path $outRoot -Recurse -Filter 'AppxManifest.xml' `
-            -ErrorAction SilentlyContinue | Select-Object -First 1
+            -ErrorAction SilentlyContinue |
+            Sort-Object { $_.FullName -notmatch 'win-x64' } | Select-Object -First 1
         if (-not $manifest) {
             throw "未找到 AppxManifest.xml（$outRoot 下）——CLI 可能未生成松散布局"
         }
         Add-AppxPackage -Register $manifest.FullName -ErrorAction Stop
-        Add-Result '4 扩展部署' '已完成' "已注册 $($manifest.FullName)"
-        Add-FollowUp 'CmdPal 面板内执行 Reload，扩展改动才生效（坑 #1）'
+        Invoke-CmdPalReload
+        Add-Result '4 扩展部署' '已完成' "已注册并触发重载：$($manifest.FullName)"
     }
     catch {
         # 尽力而为：不改退出码，如实报原始错误 + 兜底。
@@ -440,12 +466,20 @@ Run:
 ```bash
 cd "D:/Workspace/SensorMonitor" && powershell -ExecutionPolicy Bypass -NoProfile -File scripts/setup.ps1 -CheckOnly 2>&1 | tail -12
 ```
-Expected: 总结表 `4 扩展部署` 行为 `⚠ CLI 部署未实测；CheckOnly 不执行`。**[仅新机器]** 真正 build+register 及失败兜底路径留待真机验证（这是 spec 标注的未实测项）。
+Expected: 总结表 `4 扩展部署` 行为 `已就绪 | CLI 部署已实测可行；CheckOnly 不执行`。
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: [本机可选] 实跑一次部署冒烟**
+
+> 本机已装 dotnet + 开发者模式已开，可安全实测阶段 4（build + 注册是 per-user 可逆 dev 部署，`Remove-AppxPackage` 可撤）。
+```bash
+cd "D:/Workspace/SensorMonitor" && powershell -ExecutionPolicy Bypass -NoProfile -Command "& { . { $null } ; Add-AppxPackage -Register 'src/SensorMonitorExtension/SensorMonitorExtension/bin/x64/Debug/net9.0-windows10.0.26100.0/win-x64/AppxManifest.xml' ; Get-AppxPackage *SensorMonitor* | Select-Object Name,Status }" 2>&1 | tail -3
+```
+Expected: `SensorMonitorExtension ... Ok`（spike 已确认）。
+
+- [ ] **Step 5: Commit**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add scripts/setup.ps1 && git commit -m "feat(setup): stage 4 best-effort CLI extension deploy"
+cd "D:/Workspace/SensorMonitor" && git add scripts/setup.ps1 && git commit -m "feat(setup): stage 4 CLI extension deploy with auto-reload"
 ```
 
 ---
