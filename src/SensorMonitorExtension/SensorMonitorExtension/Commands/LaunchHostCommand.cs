@@ -25,6 +25,9 @@ internal sealed partial class LaunchHostCommand : InvokableCommand
 
     public static bool TryLaunch()
     {
+        // D7：优先静默通道 —— 触发已注册的最高权限计划任务，无 UAC。
+        if (TryRunScheduledTask()) return true;
+        // 回退：直接拉起 exe，弹 UAC（仅用户显式点击时可接受）。
         var path = ResolveHostPath();
         if (!File.Exists(path)) return false;
         try
@@ -32,6 +35,19 @@ internal sealed partial class LaunchHostCommand : InvokableCommand
             // Host 的 manifest 要求管理员，UseShellExecute 触发 UAC；用户拒绝则抛 Win32Exception。
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
             return true;
+        }
+        catch (System.ComponentModel.Win32Exception) { return false; }
+    }
+
+    private static bool TryRunScheduledTask()
+    {
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo(
+                "schtasks", "/Run /TN SensorMonitor.Host")
+            { UseShellExecute = false, CreateNoWindow = true });
+            if (p is null) return false;
+            return p.WaitForExit(3000) && p.ExitCode == 0;  // 任务不存在 → 非 0 → 走回退
         }
         catch (System.ComponentModel.Win32Exception) { return false; }
     }
