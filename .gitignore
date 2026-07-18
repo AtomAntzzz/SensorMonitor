@@ -1,0 +1,21 @@
+# Visual Studio / .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+artifacts/
+
+# ⚠️ 刻意不忽略以下两类文件 —— WinAppSDK 用它们部署 MSIX 包，
+# 忽略后克隆仓库的人无法 Deploy 扩展（官方文档明确要求保留）：
+#   **/Properties/launchSettings.json
+#   *.pubxml
+
+# NuGet
+*.nupkg
+packages/
+
+# 本机杂项
+*.log
+Thumbs.db
