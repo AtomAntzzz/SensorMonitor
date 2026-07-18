@@ -288,6 +288,30 @@ function Invoke-Stage4Deploy {
     }
 }
 
+# 阶段 5：注册 Host 静默提权计划任务（D7）。已注册则跳过。
+# 存在性检测走 Invoke-Native：`( cmd; expr )` 圆括号内放分号语句是语法错误（须 $()），
+# 且 schtasks 查不到任务时写 stderr，在 EAP=Stop 下经 2> 重定向必炸（均 PS 5.1 实测）。
+function Invoke-Stage5ScheduledTask {
+    Write-Step '阶段 5：计划任务'
+    if ((Invoke-Native { schtasks /Query /TN SensorMonitor.Host }).Ok) {
+        Add-Result '5 计划任务' '已就绪' '任务 SensorMonitor.Host 已存在'; return
+    }
+    if ($CheckOnly) { Add-Result '5 计划任务' '⚠' '未注册（需 --install-task）'; return }
+    $hostExe = Join-Path $script:RepoRoot `
+        'src\SensorMonitor.Host\bin\Debug\net8.0\SensorMonitor.Host.exe'
+    if (-not (Test-Path $hostExe)) {
+        Add-Result '5 计划任务' '⚠' "Host exe 不存在（阶段 3 未成功？）: $hostExe"
+        return
+    }
+    # Host 是 WinExe（GUI 子系统）：`& $hostExe` 不等它退出就返回，立即复查必竞态——
+    # 用 Start-Process -Wait 拿真实退出码。
+    $p = Start-Process -FilePath $hostExe -ArgumentList '--install-task' -Wait -PassThru
+    if ($p.ExitCode -eq 0 -and (Invoke-Native { schtasks /Query /TN SensorMonitor.Host }).Ok) {
+        Add-Result '5 计划任务' '已完成' '已注册静默提权任务'
+    }
+    else { Add-Result '5 计划任务' '⚠' "--install-task 退出码 $($p.ExitCode)，或任务仍未注册" }
+}
+
 function Main {
     Write-Step "SensorMonitor 引导开始（RepoRoot=$script:RepoRoot；CheckOnly=$CheckOnly；SkipInstall=$SkipInstall）"
     Invoke-Stage0Preflight
@@ -296,6 +320,8 @@ function Main {
     Invoke-Stage2DevMode
     Invoke-Stage3BuildTest
     Invoke-Stage4Deploy
+    Invoke-Stage5ScheduledTask
+    Add-FollowUp '装 PawnIO 并重启后，管理员运行 Host 或触发计划任务，CPU/主板传感器才齐全'
     Show-Summary
 }
 
