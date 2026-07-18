@@ -106,10 +106,60 @@ function Invoke-Stage0Preflight {
     Add-Result '0 预检' '已就绪' "winget $(winget --version 2>$null)"
 }
 
+# 单个 winget 包：已装则跳过，否则静默安装。返回 $true=已就绪/已装成功。
+# 检测也走 Invoke-Native 并带 --accept-source-agreements：新机 winget 首跑会因
+# 源协议交互确认挂住；stderr 输出在 EAP=Stop 下会炸（见 Invoke-Native 注释）。
+function Install-WingetPackage([string]$id, [string]$display) {
+    $probe = Invoke-Native { winget list --id $id -e --accept-source-agreements }
+    if ($probe.Output | Select-String -SimpleMatch $id) {
+        Write-Host "  $display 已装，跳过"
+        return $true
+    }
+    if ($CheckOnly) {
+        Write-Host "  [CheckOnly] 缺 $display → winget install -e --id $id"
+        return $false
+    }
+    Write-Step "  安装 $display …"
+    winget install -e --id $id --silent `
+        --accept-package-agreements --accept-source-agreements
+    # winget 退出码非 0 也可能是"已装/需重启"，用装后复查判定真实状态。
+    $recheck = Invoke-Native { winget list --id $id -e --accept-source-agreements }
+    return [bool]($recheck.Output | Select-String -SimpleMatch $id)
+}
+
+# 阶段 1：四个包。PawnIO 装后单独提示可能需重启。
+function Invoke-Stage1Toolchain {
+    if ($SkipInstall) { Add-Result '1 工具链' '已就绪' '按 -SkipInstall 跳过'; return }
+    Write-Step '阶段 1：工具链'
+    $pkgs = @(
+        # .NET 8 只装运行时：构建全由 SDK 9 承担（targeting pack 走 NuGet），
+        # 但 net8.0 的 Host/Tests 运行需 8.0 运行时（major 不 roll-forward）。
+        @{ id = 'Microsoft.DotNet.Runtime.8'; name = '.NET 8 运行时' },
+        @{ id = 'Microsoft.DotNet.SDK.9';     name = '.NET 9 SDK' },
+        @{ id = 'Microsoft.PowerToys';        name = 'PowerToys' },
+        @{ id = 'namazso.PawnIO';             name = 'PawnIO 驱动' }
+    )
+    $missing = @()
+    foreach ($p in $pkgs) {
+        if (-not (Install-WingetPackage $p.id $p.name)) { $missing += $p.name }
+    }
+    if ($CheckOnly) {
+        if ($missing.Count) { Add-Result '1 工具链' '⚠' "缺: $($missing -join ', ')" }
+        else { Add-Result '1 工具链' '已就绪' '全部已装' }
+        return
+    }
+    # SDK 刚装进系统 PATH，但本进程还是旧快照——立刻刷新，阶段 3 才找得到 dotnet。
+    Update-SessionPath
+    Add-FollowUp 'PawnIO 内核驱动装后可能需重启才生效（CPU/主板温度依赖它）'
+    if ($missing.Count) { Add-Result '1 工具链' '⚠' "未确认: $($missing -join ', ')" }
+    else { Add-Result '1 工具链' '已完成' '四个包就绪' }
+}
+
 function Main {
     Write-Step "SensorMonitor 引导开始（RepoRoot=$script:RepoRoot；CheckOnly=$CheckOnly；SkipInstall=$SkipInstall）"
     Invoke-Stage0Preflight
     Ensure-Elevated
+    Invoke-Stage1Toolchain
     Show-Summary
 }
 
