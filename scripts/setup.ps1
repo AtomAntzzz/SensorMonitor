@@ -212,6 +212,82 @@ function Invoke-Stage3BuildTest {
     finally { Pop-Location }
 }
 
+# CmdPal 外部重载：置 AllowExternalReload=true 并触发 x-cmdpal://reload（spike 已验证）。
+# 尽力而为：找不到 CmdPal / 设置文件缺失都只提示，不抛。
+function Invoke-CmdPalReload {
+    $pkg = Get-AppxPackage Microsoft.CommandPalette -ErrorAction SilentlyContinue
+    if (-not $pkg) {
+        Add-FollowUp 'CmdPal(Microsoft.CommandPalette) 未安装，无法自动重载；装 PowerToys/CmdPal 后手动 Reload'
+        return
+    }
+    $settings = Join-Path $env:LOCALAPPDATA `
+        "Packages\$($pkg.PackageFamilyName)\LocalState\settings.json"
+    $reloadReady = $true
+    if (Test-Path $settings) {
+        try {
+            $json = Get-Content $settings -Raw | ConvertFrom-Json
+            if ($json.AllowExternalReload -ne $true) {
+                # 键不存在时 `$json.X = ...` 直接抛"property cannot be found"（PS 5.1 实测），
+                # 须 Add-Member -Force（属性名为根级 AllowExternalReload，本机已核对）。
+                $json | Add-Member -NotePropertyName AllowExternalReload -NotePropertyValue $true -Force
+                ($json | ConvertTo-Json -Depth 100) | Set-Content $settings -Encoding UTF8
+                # 运行中的 CmdPal 仍持旧值（退出时还可能用内存副本覆写设置文件）——
+                # 结束它，让下面的协议激活带新设置重启（进程名本机已核对）。
+                Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue |
+                    Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+        } catch {
+            Add-FollowUp "改 CmdPal AllowExternalReload 失败：$($_.Exception.Message)"
+            $reloadReady = $false
+        }
+    } else {
+        # 尚无设置文件 = CmdPal 从未启动过。此时无需重载：首次启动本来就会全新枚举扩展。
+        Add-FollowUp 'CmdPal 尚未启动过（无设置文件）；首次打开面板会自动发现新扩展，无需 Reload'
+        $reloadReady = $false
+    }
+    if ($reloadReady) {
+        # 触发重载（CmdPal 未运行时协议激活会拉起它，同样加载新扩展）。
+        Start-Process 'x-cmdpal://reload' -ErrorAction SilentlyContinue
+    }
+}
+
+# 阶段 4：CLI 复刻 VS Deploy —— 构建扩展松散布局、注册、自动重载。
+function Invoke-Stage4Deploy {
+    Write-Step '阶段 4：扩展部署（CLI，已实测）'
+    $extProj = Join-Path $script:RepoRoot `
+        'src\SensorMonitorExtension\SensorMonitorExtension\SensorMonitorExtension.csproj'
+    if ($CheckOnly) {
+        Add-Result '4 扩展部署' '已就绪' 'CLI 部署已实测可行；CheckOnly 不执行'
+        return
+    }
+    try {
+        Push-Location $script:RepoRoot
+        try {
+            dotnet build $extProj -c Debug -p:Platform=x64
+            if ($LASTEXITCODE -ne 0) { throw "dotnet build 扩展退出码 $LASTEXITCODE" }
+        }
+        finally { Pop-Location }
+
+        # 松散 AppxManifest.xml 在 RID 子目录 win-x64 下；优先取 x64。
+        $outRoot = Join-Path (Split-Path $extProj) 'bin\x64\Debug'
+        $manifest = Get-ChildItem -Path $outRoot -Recurse -Filter 'AppxManifest.xml' `
+            -ErrorAction SilentlyContinue |
+            Sort-Object { $_.FullName -notmatch 'win-x64' } | Select-Object -First 1
+        if (-not $manifest) {
+            throw "未找到 AppxManifest.xml（$outRoot 下）——CLI 可能未生成松散布局"
+        }
+        Add-AppxPackage -Register $manifest.FullName -ErrorAction Stop
+        Invoke-CmdPalReload
+        Add-Result '4 扩展部署' '已完成' "已注册并触发重载：$($manifest.FullName)"
+    }
+    catch {
+        # 尽力而为：不改退出码，如实报原始错误 + 兜底。
+        Add-Result '4 扩展部署' '⚠' "CLI 部署失败：$($_.Exception.Message)"
+        Add-FollowUp "扩展 CLI 部署失败，兜底：装 Visual Studio(WinUI 工作负载)走 Deploy，或按上方 Add-AppxPackage 报错补 WinAppSDK runtime 包。原始错误已在日志。"
+        Write-Warning $_.Exception.Message
+    }
+}
+
 function Main {
     Write-Step "SensorMonitor 引导开始（RepoRoot=$script:RepoRoot；CheckOnly=$CheckOnly；SkipInstall=$SkipInstall）"
     Invoke-Stage0Preflight
@@ -219,6 +295,7 @@ function Main {
     Invoke-Stage1Toolchain
     Invoke-Stage2DevMode
     Invoke-Stage3BuildTest
+    Invoke-Stage4Deploy
     Show-Summary
 }
 
