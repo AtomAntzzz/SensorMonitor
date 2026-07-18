@@ -43,7 +43,7 @@
 | # | 阶段 | 检测（幂等键） | 动作 | admin |
 |---|------|----------------|------|:---:|
 | 0 | 预检 | winget 是否存在（`Get-Command winget`）；是否 admin | winget 缺失 → 报错退出并指向 App Installer；非 admin 且非 `-CheckOnly` → 自提权重启 | — |
-| 1 | 工具链 | 各 `winget list <id>` | `winget install -e --id` 装 `Microsoft.DotNet.SDK.8`、`Microsoft.DotNet.SDK.9`、`Microsoft.PowerToys`、`namazso.PawnIO`（`--silent --accept-package-agreements --accept-source-agreements`） | ✅ |
+| 1 | 工具链 | 各 `winget list <id>` | `winget install -e --id` 装 `Microsoft.DotNet.Runtime.8`、`Microsoft.DotNet.SDK.9`、`Microsoft.PowerToys`、`namazso.PawnIO`（`--silent --accept-package-agreements --accept-source-agreements`）。.NET 8 只需运行时：构建统一由 SDK 9 承担（net8.0 targeting pack 走 NuGet），运行需 `Microsoft.NETCore.App 8.0`（major 不 roll-forward，装 SDK 9 不覆盖） | ✅ |
 | 2 | 开发者模式 | 读 `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock\AllowDevelopmentWithoutDevLicense` | 置 `1`（松散 MSIX 注册前提） | ✅ |
 | 3 | Host 构建+测试 | — | `taskkill /f /im SensorMonitor.Host.exe`（忽略未运行，避坑 #6 锁 bin）→ `dotnet restore SensorMonitor.sln` → `dotnet build` → `dotnet test tests/SensorMonitor.Host.Tests`（期望 11 绿） | — |
 | 4 | 扩展部署 | 目标 Appx 包是否已注册（`Get-AppxPackage`） | `dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64` → 定位输出 `AppxManifest.xml` → `Add-AppxPackage -Register <manifest>`。**尽力而为**：失败则打印原始错误 + 手动兜底提示，不阻断阶段 5/6 | — |
