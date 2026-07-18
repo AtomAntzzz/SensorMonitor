@@ -42,6 +42,7 @@
 ## 常用命令
 
 ```bash
+scripts\setup.cmd                 # 新机器一键引导（自提权，装工具链+构建+部署+计划任务）；-CheckOnly 只体检
 dotnet test tests/SensorMonitor.Host.Tests            # Host 侧全部单测
 dotnet run --project src/SensorMonitor.Host -- --dump  # 管理员终端：打印本机传感器 JSON
 # 管理员终端一次性注册计划任务（此后扩展可静默拉起 Host，无 UAC）：
