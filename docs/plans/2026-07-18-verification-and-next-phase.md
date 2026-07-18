@@ -19,16 +19,26 @@
 
 > 依据：hardening 计划各 task 的验证步骤。全部通过前**不开新功能**——加固改动（WinExe、静默提权、懒启动）任何一环失效都会改变后续路线的前提。
 
-- [ ] **V1 部署新扩展**：VS Deploy（非 Build）→ CmdPal 内 Reload。
-- [ ] **V2 无窗口 Host（Task 3）**：双击 exe → UAC → 无窗口；任务管理器可见进程；
+> ✅ **Phase 0 已全部通过（2026-07-19 收口）**：V1/V2/V5/V6/V7 手动实测；V3 由 setup 脚本
+> 实跑取证；V4 按修正测法（假管道服务端）实测，用户确认 Dock 出现过期提示。
+
+- [x] **V1 部署新扩展**：VS Deploy（非 Build）→ CmdPal 内 Reload。（实际以 CLI 部署通过，VS 路径不再依赖）
+- [x] **V2 无窗口 Host（Task 3）**：双击 exe → UAC → 无窗口；任务管理器可见进程；
       `host.log` 出现"Host 启动"；管理员终端 `--dump` 仍在终端打印 JSON。
-- [ ] **V3 静默提权通道（Task 5）**：管理员终端 `--install-task`（exit 0）→ 杀 Host →
+- [x] **V3 静默提权通道（Task 5）**：管理员终端 `--install-task`（exit 0）→ 杀 Host →
       普通终端 `schtasks /Run /TN SensorMonitor.Host` → **无 UAC**、进程出现。
-- [ ] **V4 扩展防崩与过期提示（Task 4）**：band 正常读数；挂起 Host >10s → "未更新"提示；杀 Host → "Host 未运行"。
-- [ ] **V5 静默自动重连（Task 6）**：杀 Host → band 30s 内自动恢复，全程无 UAC；点击 band 立即恢复。
-- [ ] **V6 浏览页（Task 7）**：面板打开 Sensor Monitor → 按硬件分组列出全部传感器；杀 Host 重开 → 仅"Host 未运行"项。
-- [ ] **V7 登录全链路**：注销重登 → 计划任务自启 Host → Dock 实时读数 → 全程无 UAC。
-- [ ] **V8 收口**：CLAUDE.md 状态行去掉"⏳ 待桌面手动验证"；如有验证失败项，按 systematic-debugging 定位后修复再回归。
+      （setup 脚本实跑取证：/Run exit 0、无 UAC、进程出现、host.log 留痕；非提权 `/End` 亦可停 Host）
+- [x] **V4 扩展防崩与过期提示（Task 4）**：band 正常读数；数据过期 >10s → "未更新"提示；杀 Host → "Host 未运行"。
+      （2026-07-19 按下方修正测法实测：band 显示假值 `CPU 1234MHz…` + "⚠ 数据已 60s 未更新"，用户确认）
+      ⚠ 测法修正（2026-07-19）：原"挂起 Host 进程"方案不可行——挂起会连管道一起冻住，band 只会走
+      "Host 未运行"分支，到不了过期提示。正确测法：停真 Host 后起**假管道服务端**喂时间戳落后 60s 的
+      快照（协议公开，F9 条目本就记录可抢注；需自愈式重试 + `schtasks /End` 压制静默重拉的复活竞态），
+      band 显示假值 + "⚠ 数据已 60s 未更新"即过。
+- [x] **V5 静默自动重连（Task 6）**：杀 Host → band 30s 内自动恢复，全程无 UAC；点击 band 立即恢复。
+      （手动实测通过；V4 测试期间静默重拉两次"打败"假服务端复活真 Host，自愈强度额外背书）
+- [x] **V6 浏览页（Task 7）**：面板打开 Sensor Monitor → 按硬件分组列出全部传感器；杀 Host 重开 → 仅"Host 未运行"项。
+- [x] **V7 登录全链路**：注销重登 → 计划任务自启 Host → Dock 实时读数 → 全程无 UAC。
+- [x] **V8 收口**：CLAUDE.md 状态已更新为"Phase 0 全部验证通过"（2026-07-19）。
 
 ## 产品诉求清单（2026-07-19 记录，来自实际使用反馈；立项时按此为准）
 
