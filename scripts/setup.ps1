@@ -106,42 +106,60 @@ function Invoke-Stage0Preflight {
     Add-Result '0 预检' '已就绪' "winget $(winget --version 2>$null)"
 }
 
-# 单个 winget 包：已装则跳过，否则静默安装。返回 $true=已就绪/已装成功。
-# 检测也走 Invoke-Native 并带 --accept-source-agreements：新机 winget 首跑会因
-# 源协议交互确认挂住；stderr 输出在 EAP=Stop 下会炸（见 Invoke-Native 注释）。
-function Install-WingetPackage([string]$id, [string]$display) {
-    $probe = Invoke-Native { winget list --id $id -e --accept-source-agreements }
-    if ($probe.Output | Select-String -SimpleMatch $id) {
-        Write-Host "  $display 已装，跳过"
-        return $true
+# 单个工具链组件：**功能性探测**（能力就位=已装，与安装渠道无关），缺失才 winget 装。
+# 为什么不用 winget-ID 检测：非 winget 渠道装的组件（VS 带的 SDK、随其他软件装的
+# 运行时）在 ARP 里的 ID 对不上 winget 包 ID，会被漏报成"缺失"而白白重装
+# （本机实测：dotnet 功能齐全但 Runtime.8/SDK.9 两个 winget-ID 均探不到）。
+# 返回 'ready'（本就就绪）/ 'installed'（本次装上）/ 'missing'（CheckOnly 缺）/ 'failed'。
+function Install-ToolchainItem([hashtable]$item) {
+    if ([bool](& $item.Probe)) {
+        Write-Host "  $($item.Name) 已就绪（功能探测），跳过"
+        return 'ready'
     }
     if ($CheckOnly) {
-        Write-Host "  [CheckOnly] 缺 $display → winget install -e --id $id"
-        return $false
+        Write-Host "  [CheckOnly] 缺 $($item.Name) → winget install -e --id $($item.Id)"
+        return 'missing'
     }
-    Write-Step "  安装 $display …"
-    winget install -e --id $id --silent `
+    Write-Step "  安装 $($item.Name) …"
+    winget install -e --id $item.Id --silent `
         --accept-package-agreements --accept-source-agreements
-    # winget 退出码非 0 也可能是"已装/需重启"，用装后复查判定真实状态。
-    $recheck = Invoke-Native { winget list --id $id -e --accept-source-agreements }
-    return [bool]($recheck.Output | Select-String -SimpleMatch $id)
+    # winget 退出码非 0 也可能是"已装/需重启"——以装后功能复探为准。
+    # dotnet 类组件刚装完 PATH 还是旧快照，先刷新否则复探必假阴。
+    Update-SessionPath
+    if ([bool](& $item.Probe)) { return 'installed' } else { return 'failed' }
 }
 
-# 阶段 1：四个包。PawnIO 装后单独提示可能需重启。
+# 阶段 1：四个组件。PawnIO 装后单独提示可能需重启。
 function Invoke-Stage1Toolchain {
     if ($SkipInstall) { Add-Result '1 工具链' '已就绪' '按 -SkipInstall 跳过'; return }
     Write-Step '阶段 1：工具链'
     $pkgs = @(
         # .NET 8 只装运行时：构建全由 SDK 9 承担（targeting pack 走 NuGet），
         # 但 net8.0 的 Host/Tests 运行需 8.0 运行时（major 不 roll-forward）。
-        @{ id = 'Microsoft.DotNet.Runtime.8'; name = '.NET 8 运行时' },
-        @{ id = 'Microsoft.DotNet.SDK.9';     name = '.NET 9 SDK' },
-        @{ id = 'Microsoft.PowerToys';        name = 'PowerToys' },
-        @{ id = 'namazso.PawnIO';             name = 'PawnIO 驱动' }
+        @{ Id = 'Microsoft.DotNet.Runtime.8'; Name = '.NET 8 运行时'; Probe = {
+            (Get-Command dotnet -ErrorAction SilentlyContinue) -and
+            ((Invoke-Native { dotnet --list-runtimes }).Output -match '^Microsoft\.NETCore\.App 8\.') } },
+        @{ Id = 'Microsoft.DotNet.SDK.9'; Name = '.NET 9 SDK'; Probe = {
+            (Get-Command dotnet -ErrorAction SilentlyContinue) -and
+            ((Invoke-Native { dotnet --list-sdks }).Output -match '^9\.') } },
+        @{ Id = 'Microsoft.PowerToys'; Name = 'PowerToys'; Probe = {
+            (Test-Path "$env:ProgramFiles\PowerToys\PowerToys.exe") -or
+            (Test-Path "$env:LOCALAPPDATA\PowerToys\PowerToys.exe") } },
+        # PawnIO 装完的落点未实测过，三路信号任一命中即视为就位；若装后全部未命中
+        # 会被复探判 ⚠ 未确认——届时按实际落点补探测项。
+        @{ Id = 'namazso.PawnIO'; Name = 'PawnIO 驱动'; Probe = {
+            (Get-Service PawnIO -ErrorAction SilentlyContinue) -or
+            (Test-Path "$env:ProgramFiles\PawnIO") -or
+            (Test-Path 'HKLM:\SOFTWARE\PawnIO') } }
     )
     $missing = @()
+    $installedNow = @()
     foreach ($p in $pkgs) {
-        if (-not (Install-WingetPackage $p.id $p.name)) { $missing += $p.name }
+        switch (Install-ToolchainItem $p) {
+            'installed' { $installedNow += $p.Name }
+            'missing'   { $missing += $p.Name }
+            'failed'    { $missing += $p.Name }
+        }
     }
     if ($CheckOnly) {
         if ($missing.Count) { Add-Result '1 工具链' '⚠' "缺: $($missing -join ', ')" }
@@ -150,9 +168,13 @@ function Invoke-Stage1Toolchain {
     }
     # SDK 刚装进系统 PATH，但本进程还是旧快照——立刻刷新，阶段 3 才找得到 dotnet。
     Update-SessionPath
-    Add-FollowUp 'PawnIO 内核驱动装后可能需重启才生效（CPU/主板温度依赖它）'
+    # 重启提示只在本次真装了 PawnIO 时给：已就绪跳过的机器不骚扰；且本类驱动
+    # 多数免重启（本机实测装完即读到 CPU/主板温度），先验证再决定是否重启。
+    if ($installedNow -contains 'PawnIO 驱动') {
+        Add-FollowUp 'PawnIO 本次新装：若 Dock/浏览页缺 CPU/主板温度再重启（多数机型免重启，可先直接验证）'
+    }
     if ($missing.Count) { Add-Result '1 工具链' '⚠' "未确认: $($missing -join ', ')" }
-    else { Add-Result '1 工具链' '已完成' '四个包就绪' }
+    else { Add-Result '1 工具链' '已完成' '四个组件就绪（功能探测）' }
 }
 
 # 阶段 2：松散 MSIX 注册前提。检测/置注册表 AllowDevelopmentWithoutDevLicense=1。
@@ -212,43 +234,45 @@ function Invoke-Stage3BuildTest {
     finally { Pop-Location }
 }
 
-# CmdPal 外部重载：置 AllowExternalReload=true 并触发 x-cmdpal://reload（spike 已验证）。
-# 尽力而为：找不到 CmdPal / 设置文件缺失都只提示，不抛。
+# CmdPal 外部重载：确保 AllowExternalReload=true 后触发 x-cmdpal://reload。返回 $true=已触发。
+# 设置文件**不做 JSON 全量解析/回写**：PowerToys 会写入仅大小写不同的重复键
+# （colorpicker/colorPicker.savedColors），PS 5.1 ConvertFrom-Json 遇到直接抛（真机实测）；
+# 且 ConvertTo-Json 全量回写会丢重复键之一、破坏 PowerToys 设置——只做正则级微创读改。
 function Invoke-CmdPalReload {
     $pkg = Get-AppxPackage Microsoft.CommandPalette -ErrorAction SilentlyContinue
     if (-not $pkg) {
         Add-FollowUp 'CmdPal(Microsoft.CommandPalette) 未安装，无法自动重载；装 PowerToys/CmdPal 后手动 Reload'
-        return
+        return $false
     }
     $settings = Join-Path $env:LOCALAPPDATA `
         "Packages\$($pkg.PackageFamilyName)\LocalState\settings.json"
-    $reloadReady = $true
-    if (Test-Path $settings) {
-        try {
-            $json = Get-Content $settings -Raw | ConvertFrom-Json
-            if ($json.AllowExternalReload -ne $true) {
-                # 键不存在时 `$json.X = ...` 直接抛"property cannot be found"（PS 5.1 实测），
-                # 须 Add-Member -Force（属性名为根级 AllowExternalReload，本机已核对）。
-                $json | Add-Member -NotePropertyName AllowExternalReload -NotePropertyValue $true -Force
-                ($json | ConvertTo-Json -Depth 100) | Set-Content $settings -Encoding UTF8
-                # 运行中的 CmdPal 仍持旧值（退出时还可能用内存副本覆写设置文件）——
-                # 结束它，让下面的协议激活带新设置重启（进程名本机已核对）。
-                Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue |
-                    Stop-Process -Force -ErrorAction SilentlyContinue
-            }
-        } catch {
-            Add-FollowUp "改 CmdPal AllowExternalReload 失败：$($_.Exception.Message)"
-            $reloadReady = $false
-        }
-    } else {
+    if (-not (Test-Path $settings)) {
         # 尚无设置文件 = CmdPal 从未启动过。此时无需重载：首次启动本来就会全新枚举扩展。
         Add-FollowUp 'CmdPal 尚未启动过（无设置文件）；首次打开面板会自动发现新扩展，无需 Reload'
-        $reloadReady = $false
+        return $false
     }
-    if ($reloadReady) {
-        # 触发重载（CmdPal 未运行时协议激活会拉起它，同样加载新扩展）。
-        Start-Process 'x-cmdpal://reload' -ErrorAction SilentlyContinue
+    $raw = Get-Content $settings -Raw
+    if ($raw -notmatch '"AllowExternalReload"\s*:\s*true') {
+        try {
+            if ($raw -match '"AllowExternalReload"\s*:\s*false') {
+                $patched = $raw -replace '"AllowExternalReload"(\s*:\s*)false', '"AllowExternalReload"$1true'
+            } else {
+                # 键不存在：插入最外层对象开头（根级键，本机核对过位置）。
+                $patched = $raw -replace '^(\s*\{)', ('$1' + "`r`n" + '  "AllowExternalReload": true,')
+            }
+            Set-Content $settings -Value $patched -Encoding UTF8 -NoNewline
+            # 运行中的 CmdPal 仍持旧值（退出时还可能用内存副本覆写设置文件）——
+            # 结束它，让下面的协议激活带新设置重启（进程名本机已核对）。
+            Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue |
+                Stop-Process -Force -ErrorAction SilentlyContinue
+        } catch {
+            Add-FollowUp "改 CmdPal AllowExternalReload 失败：$($_.Exception.Message)"
+            return $false
+        }
     }
+    # 触发重载（CmdPal 未运行时协议激活会拉起它，同样加载新扩展）。
+    Start-Process 'x-cmdpal://reload' -ErrorAction SilentlyContinue
+    return $true
 }
 
 # 阶段 4：CLI 复刻 VS Deploy —— 构建扩展松散布局、注册、自动重载。
@@ -261,6 +285,10 @@ function Invoke-Stage4Deploy {
         return
     }
     try {
+        # 已注册的松散包被 CmdPal 激活后，扩展进程常驻并锁死自己的 bin（坑 #6 的扩展版，
+        # 真机实测：MSB3027 文件被 SensorMonitorExtension 锁定）——构建前先杀，
+        # CmdPal 会按需重拉，末尾 reload 也会重启它。
+        Invoke-Native { taskkill /f /im SensorMonitorExtension.exe } | Out-Null
         Push-Location $script:RepoRoot
         try {
             dotnet build $extProj -c Debug -p:Platform=x64
@@ -277,8 +305,9 @@ function Invoke-Stage4Deploy {
             throw "未找到 AppxManifest.xml（$outRoot 下）——CLI 可能未生成松散布局"
         }
         Add-AppxPackage -Register $manifest.FullName -ErrorAction Stop
-        Invoke-CmdPalReload
-        Add-Result '4 扩展部署' '已完成' "已注册并触发重载：$($manifest.FullName)"
+        $reloaded = Invoke-CmdPalReload
+        $detail = if ($reloaded) { '已注册并触发重载' } else { '已注册（重载未触发，见收尾提示）' }
+        Add-Result '4 扩展部署' '已完成' "${detail}：$($manifest.FullName)"
     }
     catch {
         # 尽力而为：不改退出码，如实报原始错误 + 兜底。
@@ -321,7 +350,6 @@ function Main {
     Invoke-Stage3BuildTest
     Invoke-Stage4Deploy
     Invoke-Stage5ScheduledTask
-    Add-FollowUp '装 PawnIO 并重启后，管理员运行 Host 或触发计划任务，CPU/主板传感器才齐全'
     Show-Summary
 }
 
