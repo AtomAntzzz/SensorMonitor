@@ -1,9 +1,9 @@
-// Copyright (c) Microsoft Corporation
-// The Microsoft Corporation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
-
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using SensorMonitorExtension.Ipc;
 
 namespace SensorMonitorExtension;
 
@@ -18,8 +18,34 @@ internal sealed partial class SensorMonitorExtensionPage : ListPage
 
     public override IListItem[] GetItems()
     {
-        return [
-            new ListItem(new NoOpCommand()) { Title = "TODO: Implement your extension here" }
-        ];
+        var snapshot = PipeSensorClient.TryFetch(timeoutMs: 1500);
+        if (snapshot?.Sensors is null)
+        {
+            return [new ListItem(new Commands.LaunchHostCommand())
+                { Title = "Host 未运行", Subtitle = "回车启动传感器 Host" }];
+        }
+
+        var items = new List<IListItem>();
+
+        // R5：无任何 CPU 传感器 ⇒ PawnIO 未装（见 sensor-sources.md 实测），给安装引导。
+        bool cpuVisible = snapshot.Sensors.Any(r =>
+            r.Id.StartsWith("/intelcpu") || r.Id.StartsWith("/amdcpu"));
+        if (!cpuVisible)
+        {
+            items.Add(new ListItem(new OpenUrlCommand("https://pawnio.eu/"))
+            {
+                Title = "⚠ CPU 传感器不可见",
+                Subtitle = "需安装 PawnIO 驱动（回车打开官网），安装后重启 Host",
+            });
+        }
+
+        items.AddRange(snapshot.Sensors
+            .OrderBy(r => r.Hardware).ThenBy(r => r.Type).ThenBy(r => r.Id)
+            .Select(r => (IListItem)new ListItem(new NoOpCommand())
+            {
+                Title = $"{r.Name}: {r.Value:F1} {r.Unit}",
+                Subtitle = $"{r.Hardware} · {r.Type}",
+            }));
+        return [.. items];
     }
 }
