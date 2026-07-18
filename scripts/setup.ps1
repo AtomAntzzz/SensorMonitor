@@ -68,11 +68,48 @@ function Show-Summary {
     if ($Relaunched) { Read-Host '按 Enter 关闭窗口' | Out-Null }
 }
 
-# ---- 阶段函数占位（后续 Task 填充） ----
+# ---- 阶段函数 ----
+
+function Test-IsAdmin {
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+# 非管理员且需要改系统 → 提权重启自身；-CheckOnly 不提权。
+function Ensure-Elevated {
+    if ($CheckOnly) { return }
+    if (Test-IsAdmin) { return }
+    Write-Step '需要管理员权限，正在提权重启（会弹一次 UAC）…'
+    # -Relaunched：新窗口结束前暂停，否则总结表随窗口关闭一闪而过。
+    $argList = @('-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', "`"$PSCommandPath`"", '-Relaunched')
+    if ($SkipInstall) { $argList += '-SkipInstall' }
+    try {
+        Start-Process powershell -Verb RunAs -ArgumentList $argList
+    }
+    catch {
+        # 用户在 UAC 点了"否"：Start-Process 抛异常，友好退出而非裸报错。
+        Write-Warning '已取消提权，未做任何更改。无管理员权限体检可用 -CheckOnly。'
+        exit 1
+    }
+    exit 0
+}
+
+# 阶段 0：winget 是否可用。缺失 → 硬失败（工具链全靠它）。
+function Invoke-Stage0Preflight {
+    Write-Step '阶段 0：预检'
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        Add-Result '0 预检' '❌' 'winget 不存在，请先从 Microsoft Store 安装 App Installer'
+        Show-Summary
+        exit 1
+    }
+    Add-Result '0 预检' '已就绪' "winget $(winget --version 2>$null)"
+}
 
 function Main {
     Write-Step "SensorMonitor 引导开始（RepoRoot=$script:RepoRoot；CheckOnly=$CheckOnly；SkipInstall=$SkipInstall）"
-    # 阶段调用在后续 Task 接入。
+    Invoke-Stage0Preflight
+    Ensure-Elevated
     Show-Summary
 }
 
