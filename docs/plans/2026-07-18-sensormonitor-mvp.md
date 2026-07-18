@@ -1,5 +1,8 @@
 # SensorMonitor MVP Implementation Plan
 
+> ✅ **已完成归档（2026-07-18）**：MVP 全部落地并实机验证。后续工作见
+> `docs/plans/2026-07-18-post-mvp-hardening.md`（缺陷修复 + 体验优化）。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在 PowerToys Command Palette 的 Dock 上常驻显示硬件传感器读数（CPU 频率 / 主板温度 / GPU 温度），传感器数据源随扩展自动拉起。
