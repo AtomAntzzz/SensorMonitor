@@ -32,8 +32,22 @@ internal sealed partial class SensorDockBand : ListItem, IDisposable
 
     private void Refresh()
     {
+        try
+        {
+            RefreshCore();
+        }
+        catch (Exception ex)
+        {
+            // Timer 线程的未处理异常会带崩整个扩展进程（F3）——宁可显示错误也不崩。
+            Title = "传感器: 内部错误";
+            Subtitle = ex.GetType().Name;
+        }
+    }
+
+    private void RefreshCore()
+    {
         var snapshot = PipeSensorClient.TryFetch();
-        if (snapshot is null)
+        if (snapshot?.Sensors is null)   // Sensors==null 的畸形 JSON 一并按未运行处理（F3）
         {
             if (!_autoLaunchAttempted)
             {
@@ -45,6 +59,9 @@ internal sealed partial class SensorDockBand : ListItem, IDisposable
             return;
         }
         Title = FormatLine(snapshot);
+        // Host 刷新循环若持续失败，快照会冻结在旧值 —— 用 Timestamp 显式标注（F7）。
+        var age = DateTimeOffset.Now - snapshot.Timestamp;
+        Subtitle = age > TimeSpan.FromSeconds(10) ? $"⚠ 数据已 {age.TotalSeconds:F0}s 未更新" : "";
     }
 
     /// <summary>
