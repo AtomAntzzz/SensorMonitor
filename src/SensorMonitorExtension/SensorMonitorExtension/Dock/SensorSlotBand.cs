@@ -96,7 +96,7 @@ internal sealed partial class CycleSlotCommand : InvokableCommand
         _band = band;
         _delta = delta;
         Name = (delta > 0 ? "下一个" : "上一个") + cat.CycleNoun;
-        Icon = new IconInfo(delta > 0 ? "" : "");  // Next / Previous 字形
+        Icon = new IconInfo(delta > 0 ? "\uE893" : "\uE892");  // Next / Previous 字形
         // Dock 项 Command.Id 为空会被静默忽略（坑 #3），上下文命令一并给足。
         Id = $"com.sensormonitor.{cat.Id}.{(delta > 0 ? "next" : "prev")}";
     }
