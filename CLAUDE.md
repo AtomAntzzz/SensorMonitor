@@ -5,13 +5,14 @@
 
 ## 当前状态
 
-**MVP + 加固优化（post-mvp-hardening Task 1–8）代码完成，11 单测全绿；部分实机验证待桌面会话。**
+**MVP + 加固优化（post-mvp-hardening Task 1–8）完成，11 单测全绿；Phase 0 实机验证 V1–V8 全部通过（2026-07-19 收口）。**
 
 - ✅ MVP 全链路已在实机验证过（Dock 实时显示 CPU 频率/CPU 温度/GPU 温度）。
 - ✅ 加固：管道单连接超时、刷新防重入、Host 无窗口化+文件日志（`%ProgramData%\SensorMonitor\host.log`）、
   扩展防崩+数据过期提示、计划任务静默提权（`--install-task`）、band 懒启动、传感器浏览页。
-- ✅ 2026-07-19 `scripts/setup.ps1` 实跑验证：CLI 部署（免 VS）、`--install-task` 静默拉起、
-  无窗口 Host + host.log、PawnIO 免重启读全 135 传感器。剩余待验证：Dock band 显示、登录全链路。
+- ✅ 实机验证收口：CLI 部署（免 VS）、静默提权拉起/停止（`schtasks /Run\|/End` 均免提权）、无窗口
+  Host + host.log、数据过期提示（假管道服务端测法，见 verification 计划 V4）、静默自动重连、
+  浏览页、登录全链路无 UAC、PawnIO 免重启读全 135 传感器。
 
 后续路线与产品诉求（A1 控件拆分/A2 MSIX 打包/A3 次级列表 + R 系列）见
 `docs/plans/2026-07-18-verification-and-next-phase.md`。
