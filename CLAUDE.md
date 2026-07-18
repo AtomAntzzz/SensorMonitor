@@ -5,15 +5,15 @@
 
 ## 当前状态
 
-**Phase 1（Host）已实现并验证；Phase 0/2/3（扩展）待桌面会话完成。**
+**MVP + 加固优化（post-mvp-hardening Task 1–8）代码完成，11 单测全绿；部分实机验证待桌面会话。**
 
-- ✅ **Host（Task 2–5）**：`src/SensorMonitor.Host` + `tests/SensorMonitor.Host.Tests`，10 单测全绿；
-  实测读到传感器（i9-12900K，未装 PawnIO → 仅 GPU 温度可用，见 `docs/references/sensor-sources.md` 末尾）；
-  提权单实例、缓存刷新、命名管道 JSON 服务均已跑通（管道取回 71 传感器）。
-- ⏳ **扩展（Task 1/6/7/8）**：依赖 CmdPal 模板生成器 / VS Deploy / PowerToys Dock / UAC，
-  须在桌面会话手动完成。扩展侧源码（含两处实测修正）已暂存 `docs/staged-extension/`，按其 README 拷入。
+- ✅ MVP 全链路已在实机验证过（Dock 实时显示 CPU 频率/CPU 温度/GPU 温度）。
+- ✅ 加固：管道单连接超时、刷新防重入、Host 无窗口化+文件日志（`%ProgramData%\SensorMonitor\host.log`）、
+  扩展防崩+数据过期提示、计划任务静默提权（`--install-task`）、band 懒启动、传感器浏览页。
+- ⏳ 待桌面手动验证：VS Deploy 新扩展 + Reload、`--install-task` 注册与静默拉起、无窗口 Host 观察
+  （清单见 `docs/plans/2026-07-18-post-mvp-hardening.md` 各 task 的验证步骤）。
 
-实施入口：`docs/plans/2026-07-18-sensormonitor-mvp.md`；续做扩展看 `docs/staged-extension/README.md`。
+后续优化路线（R2/R4/R6/R7/R8）见 `docs/plans/2026-07-18-post-mvp-hardening.md` 末尾。
 
 ## 一句话架构
 
@@ -23,8 +23,8 @@
 
 | 要做什么 | 读 |
 |----------|-----|
-| 实施 / 续做任何 task | `docs/plans/2026-07-18-sensormonitor-mvp.md`（先看 checkbox 进度） |
-| 动架构 / 质疑某个设计 | `docs/architecture.md`（D1–D6，推翻前先读依据） |
+| 实施 / 续做任何 task | `docs/plans/2026-07-18-post-mvp-hardening.md`（MVP 计划已完结归档） |
+| 动架构 / 质疑某个设计 | `docs/architecture.md`（D1–D8，推翻前先读依据） |
 | 碰扩展 / Dock / 部署问题 | `docs/references/cmdpal-extension.md` |
 | 碰传感器 / 权限 / 驱动问题 | `docs/references/sensor-sources.md` |
 
@@ -35,12 +35,18 @@
 3. Dock item 的 `Command.Id` 为空 → 被静默忽略。
 4. CPU/主板温度需要 **管理员 + PawnIO 驱动**（WinRing0 已被 Defender 封杀）；非提权进程只读得到 GPU。
 5. 提权管道服务端必须显式 `PipeSecurity` 放开 Authenticated Users，否则非提权扩展连不上。
+6. **Host 运行时锁死自己的 `bin/`**：重建/跑测试前先停 Host（管理员终端 `taskkill /f /im SensorMonitor.Host.exe`），
+   或用 `--artifacts-path` 输出到独立目录绕开（agent 会话无提权时的标准做法）。
+7. 自动拉起遵守 D7：自动路径只走计划任务静默通道，UAC 只允许出现在用户显式点击。
 
 ## 常用命令
 
 ```bash
-dotnet test                                          # Host 侧全部单测
+dotnet test tests/SensorMonitor.Host.Tests            # Host 侧全部单测
 dotnet run --project src/SensorMonitor.Host -- --dump  # 管理员终端：打印本机传感器 JSON
+# 管理员终端一次性注册计划任务（此后扩展可静默拉起 Host，无 UAC）：
+#   src/SensorMonitor.Host/bin/.../SensorMonitor.Host.exe --install-task
+# 停 Host（管理员）：taskkill /f /im SensorMonitor.Host.exe
 ```
 
-扩展的构建部署走 Visual Studio（Deploy → CmdPal 内 Reload），无 CLI 等价物。
+扩展的构建可 CLI（`dotnet build -p:Platform=x64`），**部署**仍走 Visual Studio（Deploy → CmdPal 内 Reload）。
