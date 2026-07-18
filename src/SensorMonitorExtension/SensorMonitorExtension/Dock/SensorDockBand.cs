@@ -48,14 +48,16 @@ internal sealed partial class SensorDockBand : ListItem, IDisposable
     }
 
     /// <summary>
-    /// MVP 默认三项：CPU 频率 / GPU 温度 / 主板温度。匹配规则按本机实测传感器
+    /// MVP 默认三项：CPU 频率 / CPU 温度 / GPU 温度。匹配规则按本机实测传感器
     /// （docs/references/sensor-sources.md 末尾）确定：
     ///  - CPU 频率：限定 Id 前缀 /intelcpu 或 /amdcpu 的 Clock 取最大值。
     ///    ⚠️ 不能用计划原稿的 Name.Contains("Core") —— 那会命中 GPU Core 时钟，
     ///    把 GPU 频率误显为 CPU（实测机 RTX 3080 = 1710MHz）。无 PawnIO 时 CPU
     ///    无 Clock 传感器，此处得 null → 显示 "--"，属正确降级。
+    ///  - CPU 温度：优先 Name == "CPU Package"，回退到该 CPU 首个温度传感器。
+    ///    （原「主板温度」改为此项：这台主板的 SuperIO 即使装了 PawnIO 也未被 LHM 识别，
+    ///    无 /lpc/ 主板温度传感器；CPU Package 是更有参考价值且现成可读的整机温度。）
     ///  - GPU 温度：Temperature 且 Name == "GPU Core"（实测 /gpu-nvidia/0/temperature/0）。
-    ///  - 主板温度：Temperature 且 Id 以 /lpc/ 开头（SuperIO）。无 PawnIO/无主板检测时为 null → "--"。
     /// </summary>
     private static string FormatLine(SensorSnapshot s)
     {
@@ -66,12 +68,14 @@ internal sealed partial class SensorDockBand : ListItem, IDisposable
                 && (r.Id.StartsWith("/intelcpu") || r.Id.StartsWith("/amdcpu")))
             .Select(r => (float?)r.Value)
             .Max();
+        float? cpuTemp =
+            s.Sensors.FirstOrDefault(r => r.Type == "Temperature" && r.Name == "CPU Package")?.Value
+            ?? s.Sensors.FirstOrDefault(r => r.Type == "Temperature"
+                   && (r.Id.StartsWith("/intelcpu") || r.Id.StartsWith("/amdcpu")))?.Value;
         float? gpuTemp = s.Sensors
             .FirstOrDefault(r => r.Type == "Temperature" && r.Name == "GPU Core")?.Value;
-        float? moboTemp = s.Sensors
-            .FirstOrDefault(r => r.Type == "Temperature" && r.Id.StartsWith("/lpc/"))?.Value;
 
-        return $"CPU {Fmt(cpuClock, "MHz")} · GPU {Fmt(gpuTemp, "°C")} · 主板 {Fmt(moboTemp, "°C")}";
+        return $"CPU {Fmt(cpuClock, "MHz")} · CPU {Fmt(cpuTemp, "°C")} · GPU {Fmt(gpuTemp, "°C")}";
     }
 
     public void Dispose() => _timer.Dispose();
