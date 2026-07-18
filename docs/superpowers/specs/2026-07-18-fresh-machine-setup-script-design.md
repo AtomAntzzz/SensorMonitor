@@ -48,13 +48,15 @@
 | 3 | Host 构建+测试 | — | `taskkill /f /im SensorMonitor.Host.exe`（忽略未运行，避坑 #6 锁 bin）→ `dotnet restore SensorMonitor.sln` → `dotnet build` → `dotnet test tests/SensorMonitor.Host.Tests`（期望 11 绿） | — |
 | 4 | 扩展部署 | 目标 Appx 包是否已注册（`Get-AppxPackage`） | `dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64` → 定位输出 `AppxManifest.xml` → `Add-AppxPackage -Register <manifest>`。**尽力而为**：失败则打印原始错误 + 手动兜底提示，不阻断阶段 5/6 | — |
 | 5 | 计划任务 | `schtasks /Query /TN SensorMonitor.Host` | 跑阶段 3 构建出的 `SensorMonitor.Host.exe --install-task`（D7 静默提权通道） | ✅ |
-| 6 | 总结 | — | 打印每阶段 ✅/⚠/❌ + 人工收尾清单：PawnIO 装后可能需**重启**；CmdPal 面板内 `Reload` 使扩展生效；装 PawnIO 并重启后 CPU 传感器才全 | — |
+| 6 | 总结 | — | 打印每阶段 ✅/⚠/❌ + 人工收尾清单：PawnIO 装后可能需**重启**；装 PawnIO 并重启后 CPU 传感器才全（扩展重载由阶段 4 的 `x-cmdpal://reload` 自动完成，无需手动 Reload） | — |
 
 ## 关键风险与处理（诚实项）
 
-1. **阶段 4 CLI 部署未经本项目实测**（CLAUDE.md 坑 #1 一贯走 VS Deploy）。
-   - 已知不确定：`dotnet build`（非 msbuild/VS）下 `EnableMsixTooling` 是否生成可注册的松散 `AppxManifest.xml`；WinAppSDK runtime framework 包首次可能缺。
-   - 处理：build→register 尝试，失败**如实报告原始错误**并给兜底（补 runtime 包 / 退回装 VS 走 Deploy），**绝不假装成功**。真机跑通后把确切命令回写 CLAUDE.md 坑 #1。
+1. **阶段 4 CLI 部署 —— 已实测通过（2026-07-18 本机 spike）。**
+   - 验证结果：`dotnet build 扩展 -c Debug -p:Platform=x64` 产出松散 `AppxManifest.xml`（路径 `bin\x64\Debug\net9.0-windows10.0.26100.0\win-x64\AppxManifest.xml`）；`Add-AppxPackage -Register <manifest>` 成功，`Get-AppxPackage SensorMonitorExtension` → `Status: Ok`。**CLI 可替代 VS Deploy**（前提：开发者模式已开，阶段 2 保证）。
+   - **外部重新加载亦可脚本化**（spike 确认）：CmdPal 设置 `AllowExternalReload` 存于 `%LOCALAPPDATA%\Packages\<CmdPal PackageFamilyName>\LocalState\settings.json`（本机 `Microsoft.CommandPalette_8wekyb3d8bbwe`）；置 `true` 后 `Start-Process 'x-cmdpal://reload'` 可无 GUI 触发扩展重载（`x-cmdpal` 协议已注册）。→ 阶段 4 追加：注册后 patch 该键为 `true` 并触发 reload，**"CmdPal 里手动 Reload"从人工收尾降级为自动**。
+   - 保留兜底：若某新机器上 build 未生成松散布局或 runtime 包缺，仍**如实报错**并提示补 WinAppSDK runtime / 退回 VS Deploy，不假装成功。
+   - 待办：跑通后把 CLI 部署命令回写 CLAUDE.md 坑 #1（"必须 VS Deploy"→"CLI 亦可，命令如下"）。
 2. **PawnIO 是签名内核驱动**：静默装，装后可能需重启；本机主板 SuperIO 芯片 LHM 0.9.6 不认（主板温度照缺，非驱动问题，脚本不承诺解决）。
 3. **网络依赖**：winget 阶段需联网；离线机器阶段 1 会失败——总结如实标注，不静默吞。
 
