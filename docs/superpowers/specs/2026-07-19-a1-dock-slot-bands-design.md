@@ -30,7 +30,7 @@ SensorSlotBand : ListItem       ← 一个可复用类，4 个实例
   MoreCommands = [上一个 X, 下一个 X]
 
 SnapshotCache（单例）
-  一个 2s Timer + 一次管道请求/周期，4 个控件读缓存
+  一个 1s Timer + 一次管道请求/周期，4 个控件读缓存
   （Host 管道串行处理，4 控件各自轮询会互相排队 → 必须共享）
   懒启动：首次 GetDockBands 才起 Timer（F5 语义保留）
   Host 未运行自动静默拉起 + 30s 节流（从旧 band 迁来，D7 语义不变）
@@ -63,7 +63,7 @@ SlotLogic（静态类，无 UI 依赖）
 - 实现假设：主命令（`Command`）在 Dock 上下文菜单中**沉底**、`MoreCommands` 在其上 ——
   与 Performance Monitor 观察一致（其"打开任务管理器"为主命令且沉底）。**实现时第一步实测**；
   若实际顺序不符，改为 `Command`=NoOp、三项全放 `MoreCommands` 按序排列（单击行为随之调整并在验证清单确认）。
-- 单击 band = 启动 Host（静默通道优先；Host 已运行时 `schtasks /Run` 无害）。
+- 单击 band = 无操作（**Task 1 冒烟实测结论**：主命令在右键菜单置顶而非沉底，故主命令改用 `NoOpCommand`；"启动传感器 Host"移入 `MoreCommands` 末位实现沉底）。Host 启动依赖：菜单末位项 + SnapshotCache 检测未运行时的静默自动拉起。
 
 ## 轮换与持久化
 
@@ -102,7 +102,7 @@ SlotLogic（静态类，无 UI 依赖）
 
 1. 编辑停靠栏可见 4 个新控件，可单独固定/排布；旧合并 band 消失。
 2. 每控件：右键 上一个/下一个 轮换正常、循环；轮换后 Title/Subtitle 正确切换。
-3. "启动传感器 Host"在菜单最下；单击 band 拉起 Host 无 UAC。
+3. "启动传感器 Host"在菜单最下（单击 band 为无操作，见"右键菜单与单击"的 Task 1 结论）；点该菜单项拉起 Host 无 UAC。
 4. 编辑停靠栏 → 标签 → 关标题/关字幕/全关（只剩图标）逐项生效。
 5. 重启 CmdPal（或重登）后各控件记住轮换选择。
 6. 杀 Host → 4 控件同时降级"--/Host 未运行"→ 30s 内静默恢复（且只拉起一次，无 4 倍请求）。

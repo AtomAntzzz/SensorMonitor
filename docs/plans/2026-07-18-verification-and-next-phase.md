@@ -69,6 +69,10 @@ CmdPal 搜索 `sensormonitor` → 回车进入**次级列表页**，展示所有
 
 ## Phase 1 — A1：Dock 控件拆分 + 预设 + 标签显隐（吸收 R6 多 band）
 
+> ✅ **已完成（2026-07-19）**：实现见 `docs/superpowers/plans/2026-07-19-a1-dock-slot-bands.md`、
+> 设计见 `docs/superpowers/specs/2026-07-19-a1-dock-slot-bands-design.md`；7 项验收全过，
+> 含用户新增诉求"菜单项加图标"。R6 温度阈值变色未做（后置）。
+
 **为什么第一**：截断问题是**当下真实使用痛点**（2026-07-19 用户反馈），且 A1 的"每指标一控件"
 正是原 R6 多 band 的形态，直接按 A1 规格实施。R6 的温度阈值变色可视工作量顺带或后置。
 

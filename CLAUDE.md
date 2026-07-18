@@ -14,12 +14,16 @@
   Host + host.log、数据过期提示（假管道服务端测法，见 verification 计划 V4）、静默自动重连、
   浏览页、登录全链路无 UAC、PawnIO 免重启读全 135 传感器。
 
-后续路线与产品诉求（A1 控件拆分/A2 MSIX 打包/A3 次级列表 + R 系列）见
+- ✅ A1（2026-07-19）：Dock 拆为 4 个预设槽位控件（CPU 频率/CPU 温度/GPU 温度/主板温度），
+  类内右键轮换（上一个/下一个，带图标）、选择持久化（LocalState slots.json）、共享 SnapshotCache
+  每 1s 轮询；单击=无操作、"启动 Host"菜单沉底；旧合并 band 已移除。7 项验收全过。
+
+后续路线与产品诉求（A2 MSIX 打包/A3 次级列表 + R 系列）见
 `docs/plans/2026-07-18-verification-and-next-phase.md`。
 
 ## 一句话架构
 
-双进程：`SensorMonitor.Host`（提权，LibreHardwareMonitorLib 读传感器，命名管道供数据）+ `SensorMonitorExtension`（CmdPal MSIX 扩展，Dock band 每 2s 轮询刷新，检测到 Host 未运行自动 UAC 拉起）。**为什么必须双进程**：见 `docs/architecture.md` D1。
+双进程：`SensorMonitor.Host`（提权，LibreHardwareMonitorLib 读传感器，命名管道供数据）+ `SensorMonitorExtension`（CmdPal MSIX 扩展，Dock 槽位控件共享 SnapshotCache 每 1s 轮询刷新，检测到 Host 未运行走计划任务静默拉起）。**为什么必须双进程**：见 `docs/architecture.md` D1。
 
 ## 文档地图（按需读，勿一次全读）
 
