@@ -5,7 +5,15 @@
 
 ## 当前状态
 
-**规划完成，未开始实现。** 实施入口：`docs/plans/2026-07-18-sensormonitor-mvp.md`（8 个 task，含完整代码与验证步骤，按 checkbox 逐条执行）。
+**Phase 1（Host）已实现并验证；Phase 0/2/3（扩展）待桌面会话完成。**
+
+- ✅ **Host（Task 2–5）**：`src/SensorMonitor.Host` + `tests/SensorMonitor.Host.Tests`，10 单测全绿；
+  实测读到传感器（i9-12900K，未装 PawnIO → 仅 GPU 温度可用，见 `docs/references/sensor-sources.md` 末尾）；
+  提权单实例、缓存刷新、命名管道 JSON 服务均已跑通（管道取回 71 传感器）。
+- ⏳ **扩展（Task 1/6/7/8）**：依赖 CmdPal 模板生成器 / VS Deploy / PowerToys Dock / UAC，
+  须在桌面会话手动完成。扩展侧源码（含两处实测修正）已暂存 `docs/staged-extension/`，按其 README 拷入。
+
+实施入口：`docs/plans/2026-07-18-sensormonitor-mvp.md`；续做扩展看 `docs/staged-extension/README.md`。
 
 ## 一句话架构
 
