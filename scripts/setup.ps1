@@ -155,11 +155,26 @@ function Invoke-Stage1Toolchain {
     else { Add-Result '1 工具链' '已完成' '四个包就绪' }
 }
 
+# 阶段 2：松散 MSIX 注册前提。检测/置注册表 AllowDevelopmentWithoutDevLicense=1。
+function Invoke-Stage2DevMode {
+    Write-Step '阶段 2：开发者模式'
+    $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
+    $val = (Get-ItemProperty -Path $key -Name AllowDevelopmentWithoutDevLicense `
+            -ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense
+    if ($val -eq 1) { Add-Result '2 开发者模式' '已就绪' '已开启'; return }
+    if ($CheckOnly) { Add-Result '2 开发者模式' '⚠' '未开启（需 admin 写注册表）'; return }
+    New-Item -Path $key -Force | Out-Null
+    New-ItemProperty -Path $key -Name AllowDevelopmentWithoutDevLicense `
+        -PropertyType DWord -Value 1 -Force | Out-Null
+    Add-Result '2 开发者模式' '已完成' '已开启'
+}
+
 function Main {
     Write-Step "SensorMonitor 引导开始（RepoRoot=$script:RepoRoot；CheckOnly=$CheckOnly；SkipInstall=$SkipInstall）"
     Invoke-Stage0Preflight
     Ensure-Elevated
     Invoke-Stage1Toolchain
+    Invoke-Stage2DevMode
     Show-Summary
 }
 
