@@ -57,6 +57,10 @@
    **扩展同理**：松散注册的扩展被 CmdPal 激活后进程常驻，锁死扩展 `bin/`——CLI 重建前先
    `taskkill /f /im SensorMonitorExtension.exe`（无需提权；`scripts/setup.ps1` 阶段 4 已内置）。
 7. 自动拉起遵守 D7：自动路径只走计划任务静默通道，UAC 只允许出现在用户显式点击。
+8. **Dock band 属性更新必须变化保护**：CmdPal 宿主统一渲染所有扩展的 dock band，高频冗余属性
+   变更事件会淹没宿主更新队列、**卡死其它扩展的合并 band**（实测每 1s 无条件重设 Title/Subtitle
+   会冻住 Performance Monitor 的合并 band）。只在格式化字符串真变时才赋值（`SetDisplay` 模式）。
+9. **验证 dock band 数量/行为要净启 CmdPal**：`x-cmdpal://reload` 跨会话累加 band，制造"每 band 重复 N 个"假象（N==reload 次数），非发布 bug。
 
 ## 常用命令
 
