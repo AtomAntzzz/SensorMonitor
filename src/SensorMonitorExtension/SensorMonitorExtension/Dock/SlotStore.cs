@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using SensorMonitorExtension.Ipc;
 using Windows.Storage;
 
 namespace SensorMonitorExtension.Dock;
@@ -31,7 +32,7 @@ internal static class SlotStore
         {
             Load();
             _map![categoryId] = key;
-            try { File.WriteAllText(FilePath, JsonSerializer.Serialize(_map)); }
+            try { File.WriteAllText(FilePath, JsonSerializer.Serialize(_map, SensorJsonContext.Default.StringMap)); }
             catch (IOException) { }
             catch (System.UnauthorizedAccessException) { }
         }
@@ -40,7 +41,7 @@ internal static class SlotStore
     private static void Load()
     {
         if (_map is not null) return;
-        try { _map = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(FilePath)); }
+        try { _map = JsonSerializer.Deserialize(File.ReadAllText(FilePath), SensorJsonContext.Default.StringMap); }
         catch { _map = null; }  // 文件不存在/损坏 → 全默认
         _map ??= [];
     }
