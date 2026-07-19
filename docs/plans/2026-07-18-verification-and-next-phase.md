@@ -57,6 +57,11 @@
 
 ### A2 — 测试 MSIX 打包（R4 的第一步）
 
+> ✅ 已完成（2026-07-19）：实现见 `docs/superpowers/plans/2026-07-19-a2-msix-packaging.md`、
+> 复现步骤 `docs/references/msix-packaging.md`。x64 打包版实装 + Dock 正常、x64/ARM64 bundle 生成。
+> **关键发现**：Release 裁剪禁用反射式 System.Text.Json，打包版曾全"Host 未运行"，已用 source-gen
+> JSON 上下文修复（`Ipc/SensorJsonContext.cs`）。R4 待办：Host 随包分发、Partner Center 身份、商店提交。
+
 当前部署是松散布局注册（`Add-AppxPackage -Register`）。验证**正式 MSIX 打包**产物
 （`dotnet build`/`msbuild` 出 .msix → 签名 → 安装）在本机可安装、可加载、Dock 正常，
 为 R4（Host 随包分发）铺路。打包流程参考 `src/SensorMonitorExtension/.github/skills/publish-extension/`。

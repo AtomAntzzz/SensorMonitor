@@ -17,6 +17,10 @@
 - ✅ A1（2026-07-19）：Dock 拆为 4 个预设槽位控件（CPU 频率/CPU 温度/GPU 温度/主板温度），
   类内右键轮换（上一个/下一个，带图标）、选择持久化（LocalState slots.json）、共享 SnapshotCache
   每 1s 轮询；单击=无操作、"启动 Host"菜单沉底；旧合并 band 已移除。7 项验收全过。
+- ✅ A2（2026-07-19）：MSIX 打包链路验证——自签名 dev 身份（`CN=SensorMonitor Dev`）、x64 Release
+  已签名 .msix 实装 + Dock 正常、x64+ARM64 bundle 生成；步骤见 `docs/references/msix-packaging.md`。
+  **关键发现并修复**：Release 裁剪禁用反射式 System.Text.Json → 打包版曾全"Host 未运行"，
+  已改 source-gen JSON 上下文（`Ipc/SensorJsonContext.cs`）解决。
 
 后续路线与产品诉求（A2 MSIX 打包/A3 次级列表 + R 系列）见
 `docs/plans/2026-07-18-verification-and-next-phase.md`。
@@ -33,6 +37,7 @@
 | 动架构 / 质疑某个设计 | `docs/architecture.md`（D1–D8，推翻前先读依据） |
 | 碰扩展 / Dock / 部署问题 | `docs/references/cmdpal-extension.md` |
 | 碰传感器 / 权限 / 驱动问题 | `docs/references/sensor-sources.md` |
+| 打 MSIX 包 / 签名 / 分发 | `docs/references/msix-packaging.md` |
 
 ## 高频坑（详情在对应参考文档）
 
