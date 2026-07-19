@@ -1,115 +1,66 @@
-# 实机验证收口 + 下一阶段路线 Plan
+# 实机验证收口 + 路线 Plan
 
-> 性质：**验证清单 + 方向路线**（无代码）。post-mvp-hardening（Task 1–8）代码已全部提交、11 单测全绿；
-> 本计划先收口遗留的桌面手动验证，再给出后续功能的推荐顺序与立项条件。
-
-**2026-07-18 完成度核查结论：**
-
-| 项 | 状态 |
-|----|------|
-| Task 1–8 提交 | ✅ 8 个 commit 与计划一一对应，工作区干净 |
-| 单测 | ✅ 11/11 全绿（含挂死客户端超时用例） |
-| 关键实现抽查 | ✅ `PipeJsonServer` 单连接超时、`HostLog`、`TaskInstaller`、`TryLaunchSilent`、浏览页均落地 |
-| 文档收口 | ✅ architecture.md 已含 D7/D8；`docs/staged-extension/` 已删除 |
-| **实机验证** | ⏳ **未做**：计划任务未注册、`%ProgramData%\SensorMonitor\host.log` 不存在、Host 未运行 |
+> 性质：**完成记录 + 方向路线**（无代码）。截至 2026-07-19，Phase 0 实机验证（V1–V8）与三项
+> 产品诉求 A1/A2/A3（含增强）**均已交付**；本文档留作完成记录 + 后续按需路线。各项实现细节见
+> 对应 `docs/superpowers/plans|specs/` 与 `CLAUDE.md` 状态段。
 
 ---
 
-## Phase 0 — 实机验证收口（阻塞项，需桌面会话 + 管理员权限）
+## 已交付（2026-07-19）
 
-> 依据：hardening 计划各 task 的验证步骤。全部通过前**不开新功能**——加固改动（WinExe、静默提权、懒启动）任何一环失效都会改变后续路线的前提。
+### Phase 0 — post-MVP 加固的实机验证 ✅ V1–V8 全通过
 
-> ✅ **Phase 0 已全部通过（2026-07-19 收口）**：V1/V2/V5/V6/V7 手动实测；V3 由 setup 脚本
-> 实跑取证；V4 按修正测法（假管道服务端）实测，用户确认 Dock 出现过期提示。
+> 加固改动（WinExe、静默提权、懒启动、防崩过期提示）逐项桌面实测；细节见 hardening 计划各 task。
 
-- [x] **V1 部署新扩展**：VS Deploy（非 Build）→ CmdPal 内 Reload。（实际以 CLI 部署通过，VS 路径不再依赖）
-- [x] **V2 无窗口 Host（Task 3）**：双击 exe → UAC → 无窗口；任务管理器可见进程；
-      `host.log` 出现"Host 启动"；管理员终端 `--dump` 仍在终端打印 JSON。
-- [x] **V3 静默提权通道（Task 5）**：管理员终端 `--install-task`（exit 0）→ 杀 Host →
-      普通终端 `schtasks /Run /TN SensorMonitor.Host` → **无 UAC**、进程出现。
-      （setup 脚本实跑取证：/Run exit 0、无 UAC、进程出现、host.log 留痕；非提权 `/End` 亦可停 Host）
-- [x] **V4 扩展防崩与过期提示（Task 4）**：band 正常读数；数据过期 >10s → "未更新"提示；杀 Host → "Host 未运行"。
-      （2026-07-19 按下方修正测法实测：band 显示假值 `CPU 1234MHz…` + "⚠ 数据已 60s 未更新"，用户确认）
-      ⚠ 测法修正（2026-07-19）：原"挂起 Host 进程"方案不可行——挂起会连管道一起冻住，band 只会走
-      "Host 未运行"分支，到不了过期提示。正确测法：停真 Host 后起**假管道服务端**喂时间戳落后 60s 的
-      快照（协议公开，F9 条目本就记录可抢注；需自愈式重试 + `schtasks /End` 压制静默重拉的复活竞态），
-      band 显示假值 + "⚠ 数据已 60s 未更新"即过。
-- [x] **V5 静默自动重连（Task 6）**：杀 Host → band 30s 内自动恢复，全程无 UAC；点击 band 立即恢复。
-      （手动实测通过；V4 测试期间静默重拉两次"打败"假服务端复活真 Host，自愈强度额外背书）
-- [x] **V6 浏览页（Task 7）**：面板打开 Sensor Monitor → 按硬件分组列出全部传感器；杀 Host 重开 → 仅"Host 未运行"项。
-- [x] **V7 登录全链路**：注销重登 → 计划任务自启 Host → Dock 实时读数 → 全程无 UAC。
-- [x] **V8 收口**：CLAUDE.md 状态已更新为"Phase 0 全部验证通过"（2026-07-19）。
+- **V1 部署**：CLI 部署通过（免 VS Deploy）。
+- **V2 无窗口 Host**：双击→UAC→无窗口、进程可见、`host.log` 出现"Host 启动"、`--dump` 仍打印 JSON。
+- **V3 静默提权通道**：`--install-task`→杀 Host→`schtasks /Run` 无 UAC 拉起（setup 脚本实跑取证；`/End` 亦免提权停）。
+- **V4 防崩 + 过期提示**：数据过期 >10s → "⚠ 数据已 Ns 未更新"。
+  ⚠ **测法修正（复用价值）**：原"挂起 Host 进程"不可行（挂起连管道一起冻，只会走"Host 未运行"分支）。
+  正确测法：停真 Host 后起**假管道服务端**喂时间戳落后 60s 的快照（协议公开，F9 记录可抢注；需自愈式
+  重试 + `schtasks /End` 压制静默重拉的复活竞态）。
+- **V5 静默自动重连**：杀 Host → band 30s 内无 UAC 恢复（V4 测试期静默重拉两次复活真 Host，自愈强度额外背书）。
+- **V6 浏览页**：搜 Sensor Monitor → 按硬件分组列全部传感器；杀 Host 重开 → 仅"Host 未运行"项。
+- **V7 登录全链路**：注销重登 → 计划任务自启 Host → Dock 实时读数 → 全程无 UAC。
+- **V8 收口**：CLAUDE.md 状态更新。
 
-## 产品诉求清单（2026-07-19 记录，来自实际使用反馈；立项时按此为准）
+### A1 — Dock 控件拆分 + 预设 + 类内轮换 ✅（+ 增强）
 
-> A1/A3 均指定了**参考设计**：实现前先实机把玩对应扩展（Performance Monitor / Weather），
-> 对齐其交互再动手；诉求描述与参考设计冲突时以诉求为准。
+诉求（参考 Performance Monitor）：每指标独立控件（解决截断）、CPU 频率/CPU 温度/GPU 温度/主板温度
+4 预设、右键"标签→显示标题/字幕"（宿主内置，双关只剩图标）。
 
-### A1 — Dock 控件拆分 + 预设 + 标签显隐（参考 Performance Monitor 设计，细化 R6）
+- **本体**：4 预设槽位控件、类内右键轮换（上一个/下一个带图标）、选择持久化（LocalState `slots.json`）、
+  共享 SnapshotCache 每 1s 轮询、"启动 Host"菜单沉底、旧合并 band 移除。7 项验收全过。
+  见 `docs/superpowers/plans/2026-07-19-a1-dock-slot-bands.md`。
+- **增强（2026-07-19）**：单击 band 打开**类别选择页**（`Pages/SensorPickerPage.cs`，列该类候选、
+  ✓ 标当前、点选即换、`RaiseItemsChanged` 刷新）；编辑停靠栏 add-menu 的 band 显示类别图标；
+  Provider 改每次新建 WrappedDockItem（对齐官方）。见 `docs/superpowers/plans/2026-07-19-a1-band-picker-icons.md`。
+- **学习（记 CLAUDE.md）**：验证 dock band 数量要**净启 CmdPal**——`x-cmdpal://reload` 会跨会话
+  累加 band，制造"每个 band 重复 N 个"的假象（N == reload 次数），非发布 bug。
+- **未做**：R6 温度阈值变色（后置，见下）。
 
-1. **每项数据独立控件**：不再全部挤在一个 band 里（现状会截断，后面的信息看不见）；
-   一个指标一个 Dock 控件。
-2. **预设控件**：提供若干预设，内容含 CPU 频率 / CPU 温度 / GPU 温度及其他可用指标。
-3. **单控件右键菜单 → 标签 → 显示标题 / 显示字幕**（与 Performance Monitor 一致）：
-   - **标题** = 实际数据 + 单位（如 `4700MHz`）；
-   - **字幕** = 该项说明（如 `GPU温度`）；
-   - 控件整体 = **图标 + 标题 + 字幕**；标题与字幕都取消显示时**只剩图标**。
+### A2 — MSIX 打包链路验证 ✅
 
-### A2 — 测试 MSIX 打包（R4 的第一步）
+- 自签名 dev 身份（`CN=SensorMonitor Dev`）、x64 Release 已签名 .msix 实装 + Dock 正常、x64/ARM64 bundle 生成。
+- **关键发现并修复**：Release 裁剪禁用反射式 System.Text.Json → 打包版曾全"Host 未运行"，
+  改 source-gen JSON 上下文（`Ipc/SensorJsonContext.cs`）解决——这坑不提前打包就会潜伏到 R4/商店才爆。
+- 复现步骤 `docs/references/msix-packaging.md`；实现 `docs/superpowers/plans/2026-07-19-a2-msix-packaging.md`。
 
-> ✅ 已完成（2026-07-19）：实现见 `docs/superpowers/plans/2026-07-19-a2-msix-packaging.md`、
-> 复现步骤 `docs/references/msix-packaging.md`。x64 打包版实装 + Dock 正常、x64/ARM64 bundle 生成。
-> **关键发现**：Release 裁剪禁用反射式 System.Text.Json，打包版曾全"Host 未运行"，已用 source-gen
-> JSON 上下文修复（`Ipc/SensorJsonContext.cs`）。R4 待办：Host 随包分发、Partner Center 身份、商店提交。
+### A3 — 搜索进入次级列表 ✅
 
-当前部署是松散布局注册（`Add-AppxPackage -Register`）。验证**正式 MSIX 打包**产物
-（`dotnet build`/`msbuild` 出 .msix → 签名 → 安装）在本机可安装、可加载、Dock 正常，
-为 R4（Host 随包分发）铺路。打包流程参考 `src/SensorMonitorExtension/.github/skills/publish-extension/`。
+- 本体既有浏览页已满足（搜 SensorMonitor → 回车列全部传感器）；band 单击选择页（见 A1 增强）
+  进一步补齐"点进去换显示"的交互。
 
-### A3 — 搜索进入次级列表（参考 Weather 设计）
+---
 
-> ✅ 本体已满足（搜 SensorMonitor 回车进浏览页列全部传感器）；2026-07-19 追加 band 单击类别
-> 选择页 + add-menu 图标 + 澄清"重复 band"为 reload 假象，见
-> `docs/superpowers/plans/2026-07-19-a1-band-picker-icons.md`。
+## 下一步（未排期，按需立项）
 
-CmdPal 搜索 `sensormonitor` → 回车进入**次级列表页**，展示所有可用信息（全部传感器读数）。
-现有浏览页（hardening Task 7）已具雏形，需对齐 Weather 的进入方式与列表体验核对差距
-（顶层命令命名/图标、回车直达、列表分组与刷新）。
+> A1/A2/A3 收口后建议**日用观察几天**再定优先级；R2 交互依赖真实使用反馈。
 
-## Phase 1 — A1：Dock 控件拆分 + 预设 + 标签显隐（吸收 R6 多 band）
-
-> ✅ **已完成（2026-07-19）**：实现见 `docs/superpowers/plans/2026-07-19-a1-dock-slot-bands.md`、
-> 设计见 `docs/superpowers/specs/2026-07-19-a1-dock-slot-bands-design.md`；7 项验收全过，
-> 含用户新增诉求"菜单项加图标"。R6 温度阈值变色未做（后置）。
-
-**为什么第一**：截断问题是**当下真实使用痛点**（2026-07-19 用户反馈），且 A1 的"每指标一控件"
-正是原 R6 多 band 的形态，直接按 A1 规格实施。R6 的温度阈值变色可视工作量顺带或后置。
-
-**立项条件**：Phase 0 全过。
-**动手前**：实机把玩 Performance Monitor 扩展对齐交互；确认 CmdPal Dock API 对多 band、
-右键菜单（标签显隐）、图标态的支持面（`.github/skills/add-dock-band` 可参考）。
-**验收要点**：按 A1 三条逐项对照；预设控件开箱即用；标题/字幕独立开关，双关只剩图标。
-
-## Phase 2 — A3 次级列表对齐 + A2 MSIX 打包测试（两个独立小项）
-
-- **A3**：对齐 Weather 的搜索→回车→次级列表体验，在现有浏览页基础上核对差距改进。
-- **A2**：走通正式 MSIX 打包（构建→签名→安装→Dock 正常），为 R4 分发铺路；
-  产出打包步骤文档（成功命令序列记入 CLAUDE.md 或 publish-extension skill 笔记）。
-
-两项互不依赖，可穿插在 Phase 1 前后的间隙做；A2 若发现松散部署与打包行为差异，优先记录再决定是否阻塞。
-
-## Phase 3 — R2：设置页（传感器选择 + 刷新间隔）
-
-**说明**：A1 落地后会自然产生"每控件配置"模型（选哪些指标、标签显隐持久化），R2 的设置页
-应基于该模型扩展（加刷新间隔等全局项），避免另起炉灶。`.github/skills/add-extension-settings`
-已有现成 skill 可用。
-
-**立项条件**：Phase 1 完成 + 数天日常使用反馈。
-
-## 后续/按需（不排期）
-
-| # | 事项 | 触发条件 |
-|---|------|---------|
-| R7 | Host 空闲自退出（N 分钟无管道请求自退，静默通道会拉回） | 用户诉求消化完后的收尾优化；把"常驻提权"收敛为"按需提权" |
-| R4 | Host 打进 MSIX 随扩展分发（A2 是其第一步） | 想在第二台设备安装、或对外分发时（消除 `SENSORMONITOR_HOST_EXE` 环境变量依赖） |
-| R8 | 管道抢注防护 | 数据用途升级（如接入自动化决策）时；当前只读非敏感，维持接受风险 |
+| # | 事项 | 触发条件 / 说明 |
+|---|------|----------------|
+| R2 | 设置页（传感器选择 + 刷新间隔等全局项） | 日用价值最大。基于 A1 已有的"每控件配置"模型（slots.json）扩展，勿另起炉灶；`.github/skills/add-extension-settings` 有现成 skill |
+| R6 | 温度阈值变色（超阈值 band 变红等） | A1 遗留的可视增强，工作量小；日用后若有需要顺带做 |
+| R4 | Host 打进 MSIX 随扩展分发（A2 已铺路） | 想在第二台设备安装/对外分发时；消除 `SENSORMONITOR_HOST_EXE` 依赖。前置：A2 的裁剪修复已就位 |
+| R7 | Host 空闲自退出（N 分钟无管道请求自退，静默通道会拉回） | 收尾优化：把"常驻提权"收敛为"按需提权" |
+| R8 | 管道抢注防护（校验服务端签名/路径） | 数据用途升级（如接入自动化决策）时；当前只读非敏感，维持接受风险 |
