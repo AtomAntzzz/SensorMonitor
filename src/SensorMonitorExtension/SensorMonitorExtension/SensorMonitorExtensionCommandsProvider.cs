@@ -14,8 +14,10 @@ namespace SensorMonitorExtension;
 public partial class SensorMonitorExtensionCommandsProvider : CommandProvider
 {
     private readonly ICommandItem[] _commands;
-    // band 一次性创建，保持对象身份稳定（Dock 依赖属性变更通知重绘）。
-    private readonly ICommandItem[] _dockBands;
+    // 缓存 band 实例（各订阅静态 SnapshotCache.Updated 一次，不泄漏）；
+    // 但每次 GetDockBands 用新 WrappedDockItem 包装（B1/重复症状：CmdPal 视 WrappedDockItem
+    // 为一次性槽位，缓存同一实例会致 add-menu 重复列出/取消固定后重加异常；官方示例每次 new）。
+    private readonly SensorSlotBand[] _bands;
 
     public SensorMonitorExtensionCommandsProvider()
     {
@@ -24,10 +26,7 @@ public partial class SensorMonitorExtensionCommandsProvider : CommandProvider
         _commands = [
             new CommandItem(new SensorMonitorExtensionPage()) { Title = DisplayName },
         ];
-        _dockBands = SlotCategories.All
-            .Select(c => (ICommandItem)new WrappedDockItem(
-                [new SensorSlotBand(c)], $"com.sensormonitor.{c.Id}", c.DisplayName))
-            .ToArray();
+        _bands = SlotCategories.All.Select(c => new SensorSlotBand(c)).ToArray();
     }
 
     public override ICommandItem[] TopLevelCommands()
@@ -35,10 +34,14 @@ public partial class SensorMonitorExtensionCommandsProvider : CommandProvider
         return _commands;
     }
 
-    // Dock band（SDK ≥ 0.9.260303001 的 ICommandProvider3）：4 个独立预设控件（spec A1）。
+    // Dock band（ICommandProvider3）：每次新建包装缓存 band（修 B1/重复），并给包装设
+    // 类别图标（编辑停靠栏 add-menu 才有图标）。
     public override ICommandItem[]? GetDockBands()
     {
         SnapshotCache.EnsureStarted(); // 懒启动（F5）：未进 Dock 流程不轮询、不触发自动拉起
-        return _dockBands;
+        return _bands.Select(b => (ICommandItem)new WrappedDockItem(
+                [b], $"com.sensormonitor.{b.Category.Id}", b.Category.DisplayName)
+            { Icon = new IconInfo(b.Category.IconGlyph) })
+            .ToArray();
     }
 }
