@@ -62,5 +62,5 @@
 | R2 | 设置页（传感器选择 + 刷新间隔等全局项） | 日用价值最大。基于 A1 已有的"每控件配置"模型（slots.json）扩展，勿另起炉灶；`.github/skills/add-extension-settings` 有现成 skill |
 | ~~R6~~ | ~~温度阈值变色~~（**spike 证伪，2026-07-19 搁置**） | Dock band **不渲染 Tag/颜色**（红底"热"Tag 实测在 dock 完全不显；SDK 0.9.260303001）。若要做只能降级"超阈值换红图标字形/标题加⚠"，价值有限，暂不做 |
 | R4 | Host 打进 MSIX 随扩展分发（A2 已铺路） | 想在第二台设备安装/对外分发时；消除 `SENSORMONITOR_HOST_EXE` 依赖。前置：A2 的裁剪修复已就位 |
-| R7 | Host 空闲自退出（N 分钟无管道请求自退，静默通道会拉回） | 收尾优化：把"常驻提权"收敛为"按需提权" |
+| ✅ R7 | Host 空闲自退出（5min 无管道请求自退，静默通道会拉回） | **已完成（2026-07-19）**：`PipeJsonServer.LastRequestUtc` + Program.cs 空闲 Timer；见 `docs/superpowers/plans/2026-07-19-r7-host-idle-exit.md` |
 | R8 | 管道抢注防护（校验服务端签名/路径） | 数据用途升级（如接入自动化决策）时；当前只读非敏感，维持接受风险 |
