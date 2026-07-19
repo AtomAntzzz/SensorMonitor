@@ -13,6 +13,10 @@
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
+
+    <AppxPackageIdentityName>SensorMonitorExtension</AppxPackageIdentityName>
+    <AppxPackagePublisher>CN=SensorMonitor Dev</AppxPackagePublisher>
+    <AppxPackageVersion>0.0.1.0</AppxPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
