@@ -16,7 +16,11 @@
 
 - ✅ A1（2026-07-19）：Dock 拆为 4 个预设槽位控件（CPU 频率/CPU 温度/GPU 温度/主板温度），
   类内右键轮换（上一个/下一个，带图标）、选择持久化（LocalState slots.json）、共享 SnapshotCache
-  每 1s 轮询；单击=无操作、"启动 Host"菜单沉底；旧合并 band 已移除。7 项验收全过。
+  每 1s 轮询；"启动 Host"菜单沉底；旧合并 band 已移除。7 项验收全过。
+- ✅ A1 增强（2026-07-19）：**单击 band 打开类别选择页**（`Pages/SensorPickerPage.cs`，列该类候选、
+  ✓ 标当前、点选即换、`RaiseItemsChanged` 刷新）；编辑停靠栏 add-menu 的 band 显示类别图标
+  （WrappedDockItem.Icon）；Provider 改每次新建 WrappedDockItem（对齐官方；"重复 band"实为
+  开发期 `x-cmdpal://reload` 累加假象、非发布 bug，净启每 band 一份）。
 - ✅ A2（2026-07-19）：MSIX 打包链路验证——自签名 dev 身份（`CN=SensorMonitor Dev`）、x64 Release
   已签名 .msix 实装 + Dock 正常、x64+ARM64 bundle 生成；步骤见 `docs/references/msix-packaging.md`。
   **关键发现并修复**：Release 裁剪禁用反射式 System.Text.Json → 打包版曾全"Host 未运行"，
