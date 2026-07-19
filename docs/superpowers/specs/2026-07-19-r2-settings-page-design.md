@@ -28,8 +28,9 @@
 - `SensorMonitorExtensionCommandsProvider` **未设 `Settings` 属性** → 设置页是绿地。
 - `SnapshotCache.RefreshMs = 1000`（`const`），刷新在 `finally` 里 `_timer.Change(RefreshMs, …)` 重排。
 - 过期阈值 10s 写死在 `SensorSlotBand.RefreshCore`（`age > TimeSpan.FromSeconds(10)`）。
-- 温度读数：`Type == "Temperature"`、`Unit == "°C"`（Host `SensorMapper.UnitOf`）；扩展侧
-  `SensorReading` 带 `Type` / `Unit` 字段，可据 `Type == "Temperature"` 稳健判温度。
+- 温度读数：Host `SensorMapper.UnitOf` **仅温度**映射 `Unit == "°C"`。注意 band/选择页拿到的是
+  `SlotCandidate`（只带 `Value`/`Unit`，**无 `Type`**），浏览页才是带 `Type` 的 `SensorReading`；
+  故转换统一按 `Unit == "°C"` 判定，三处一致、无需 `Type`。
 - **三处温度显示位**：`SensorSlotBand.RefreshCore`（dock band）、`SensorPickerPage.GetItems`（选择页）、
   `SensorMonitorExtensionPage.GetItems`（浏览页，`{r.Value:F1} {r.Unit}`）。
 - `add-extension-settings` skill：`ToggleSetting`/`TextSetting`/`ChoiceSetSetting`；`Settings` 由宿主自动持久化；
@@ -72,9 +73,10 @@
   internal static class TempDisplay
   {
       public static bool Fahrenheit;   // 仅 SettingsManager 写
-      // 非温度读数原样透传；温度按当前单位换算（°F = °C·9/5+32）。
-      public static (double Value, string Unit) Format(double value, string unit, string type)
-          => type == "Temperature"
+      // 按 Unit 判温度（band/选择页的 SlotCandidate 无 Type）：非 °C 原样透传；
+      // °C 按当前单位换算（°F = °C·9/5+32）。
+      public static (double Value, string Unit) Format(double value, string unit)
+          => unit == "°C"
               ? (Fahrenheit ? value * 9 / 5 + 32 : value, Fahrenheit ? "°F" : "°C")
               : (value, unit);
   }
