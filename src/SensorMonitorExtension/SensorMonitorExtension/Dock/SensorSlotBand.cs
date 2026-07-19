@@ -16,6 +16,8 @@ internal sealed partial class SensorSlotBand : ListItem
     private readonly SlotCategory _cat;
     private string? _currentKey;
 
+    internal SlotCategory Category => _cat;
+
     public SensorSlotBand(SlotCategory cat)
         : base(new NoOpCommand() { Id = $"com.sensormonitor.{cat.Id}.noop" })  // Dock 项 Command.Id 为空会被静默忽略（坑 #3）
     {
