@@ -20,6 +20,13 @@ public sealed class PipeJsonServer : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private Task? _loop;
 
+    // 末次 GET 请求的 UTC ticks（accept 循环写、Host 空闲 Timer 读，Interlocked 保证 64 位原子可见）。
+    private long _lastRequestTicks;
+
+    /// <summary>末次收到 GET 请求的时刻；构造时初始化为启动时刻（未连接过也从启动起计）。</summary>
+    public DateTimeOffset LastRequestUtc =>
+        new(Interlocked.Read(ref _lastRequestTicks), TimeSpan.Zero);
+
     public PipeJsonServer(string pipeName, Func<SensorSnapshot> snapshotProvider,
         TimeSpan? connectionTimeout = null, Action<string>? log = null)
     {
@@ -27,6 +34,7 @@ public sealed class PipeJsonServer : IDisposable
         _snapshotProvider = snapshotProvider;
         _connectionTimeout = connectionTimeout ?? TimeSpan.FromSeconds(5);
         _log = log ?? (_ => { });
+        _lastRequestTicks = DateTimeOffset.UtcNow.UtcTicks;
     }
 
     public void Start() => _loop = Task.Run(AcceptLoopAsync);
@@ -72,6 +80,7 @@ public sealed class PipeJsonServer : IDisposable
             var request = await reader.ReadLineAsync(connCts.Token);
             if (request == "GET")
             {
+                Interlocked.Exchange(ref _lastRequestTicks, DateTimeOffset.UtcNow.UtcTicks);
                 await writer.WriteLineAsync(JsonSerializer.Serialize(_snapshotProvider()));
                 // 等客户端读完并主动断开（EOF）后再关管道，避免客户端 flush 撞已关闭管道
                 //（MVP Task 4 引入的收尾握手，保持不变）。
