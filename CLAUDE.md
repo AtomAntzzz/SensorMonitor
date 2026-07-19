@@ -25,6 +25,8 @@
   已签名 .msix 实装 + Dock 正常、x64+ARM64 bundle 生成；步骤见 `docs/references/msix-packaging.md`。
   **关键发现并修复**：Release 裁剪禁用反射式 System.Text.Json → 打包版曾全"Host 未运行"，
   已改 source-gen JSON 上下文（`Ipc/SensorJsonContext.cs`）解决。
+- ✅ R7（2026-07-19）：Host 末次管道请求后 5min 无请求自退（`PipeJsonServer.LastRequestUtc` +
+  Program.cs 空闲 Timer），把常驻提权进程收敛为按需；有 band 固定时每 1s 轮询永不退，自退后静默通道拉回。12 单测。
 
 后续路线与产品诉求（A2 MSIX 打包/A3 次级列表 + R 系列）见
 `docs/plans/2026-07-18-verification-and-next-phase.md`。
