@@ -17,6 +17,8 @@ internal sealed partial class SensorSlotBand : ListItem
     private string? _currentKey;
 
     internal SlotCategory Category => _cat;
+    internal string? CurrentKey => _currentKey;
+    private readonly Pages.SensorPickerPage _picker;
 
     public SensorSlotBand(SlotCategory cat)
         : base(new NoOpCommand() { Id = $"com.sensormonitor.{cat.Id}.noop" })  // Dock 项 Command.Id 为空会被静默忽略（坑 #3）
@@ -32,6 +34,10 @@ internal sealed partial class SensorSlotBand : ListItem
             new CommandContextItem(new CycleSlotCommand(this, cat, +1)),
             new CommandContextItem(new Commands.LaunchHostCommand()),  // 末位=菜单沉底
         ];
+        // 单击 band 打开类别选择页（探针确认 Command 可写且接受 Page）。
+        // base(...) 的 NoOp 仅占位，此处覆盖为真正的主命令。持引用以便选择变更后通知刷新。
+        _picker = new Pages.SensorPickerPage(this, cat);
+        Command = _picker;
         // 订阅静态事件：band 与扩展进程同生命周期，无需退订；
         // 若将来 band 支持重建，必须配对退订，否则静态事件根挂实例（泄漏）。
         SnapshotCache.Updated += Refresh;
@@ -47,6 +53,15 @@ internal sealed partial class SensorSlotBand : ListItem
         _currentKey = next.Key;
         SlotStore.Set(_cat.Id, next.Key);
         Refresh();
+    }
+
+    /// <summary>绝对选择（picker 页用）：直接切到指定 key，写持久化并刷新。</summary>
+    internal void SetSelection(string key)
+    {
+        _currentKey = key;
+        SlotStore.Set(_cat.Id, key);
+        Refresh();
+        _picker.NotifyChanged();  // 让选择页的"✓ 当前"标记跟着移动
     }
 
     private void Refresh()
