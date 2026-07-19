@@ -83,22 +83,30 @@ internal sealed partial class SensorSlotBand : ListItem
         var snap = SnapshotCache.Current;
         if (snap?.Sensors is null)
         {
-            Title = "--";
-            Subtitle = "Host 未运行";
+            SetDisplay("--", "Host 未运行");
             return;
         }
         var current = SlotLogic.Resolve(_cat.GetCandidates(snap.Sensors), _currentKey);
         if (current is null)
         {
-            Title = "--";
-            Subtitle = _cat.EmptyHint;  // 如无 PawnIO 时 CPU 两类候选为空
+            SetDisplay("--", _cat.EmptyHint);  // 如无 PawnIO 时 CPU 两类候选为空
             return;
         }
-        Title = $"{current.Value:F0}{current.Unit}";
         var age = DateTimeOffset.Now - snap.Timestamp;
-        Subtitle = age > TimeSpan.FromSeconds(10)
+        var subtitle = age > TimeSpan.FromSeconds(10)
             ? $"⚠ 数据已 {age.TotalSeconds:F0}s 未更新"                  // F7 过期提示优先
             : (current.IsDefault ? _cat.DisplayName : current.Label);   // spec：显示规则
+        SetDisplay($"{current.Value:F0}{current.Unit}", subtitle);
+    }
+
+    /// <summary>
+    /// 变化保护：只在字符串真变时才赋值，避免每 1s 无谓地给 CmdPal 宿主发属性变更事件。
+    /// 高频冗余更新会淹没宿主 dock 更新队列、卡住其它扩展的合并 band（实测 Perf Monitor）。
+    /// </summary>
+    private void SetDisplay(string title, string subtitle)
+    {
+        if (Title != title) Title = title;
+        if (Subtitle != subtitle) Subtitle = subtitle;
     }
 }
 
