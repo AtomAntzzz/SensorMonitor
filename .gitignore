@@ -12,6 +12,11 @@ artifacts/
 #   **/Properties/launchSettings.json
 #   *.pubxml
 
+# MSIX 打包产物 & 本机测试证书（A2）
+AppPackages/
+*.cer
+*.pfx
+
 # NuGet
 *.nupkg
 packages/
