@@ -68,6 +68,10 @@
 
 ### A3 — 搜索进入次级列表（参考 Weather 设计）
 
+> ✅ 本体已满足（搜 SensorMonitor 回车进浏览页列全部传感器）；2026-07-19 追加 band 单击类别
+> 选择页 + add-menu 图标 + 澄清"重复 band"为 reload 假象，见
+> `docs/superpowers/plans/2026-07-19-a1-band-picker-icons.md`。
+
 CmdPal 搜索 `sensormonitor` → 回车进入**次级列表页**，展示所有可用信息（全部传感器读数）。
 现有浏览页（hardening Task 7）已具雏形，需对齐 Weather 的进入方式与列表体验核对差距
 （顶层命令命名/图标、回车直达、列表分组与刷新）。
