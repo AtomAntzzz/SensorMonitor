@@ -96,7 +96,7 @@ internal sealed partial class SensorSlotBand : ListItem
         var subtitle = age > TimeSpan.FromSeconds(10)
             ? $"⚠ 数据已 {age.TotalSeconds:F0}s 未更新"                  // F7 过期提示优先
             : (current.IsDefault ? _cat.DisplayName : current.Label);   // spec：显示规则
-        var (dispVal, dispUnit) = Settings.TempDisplay.Format(current.Value, current.Unit);
+        var (dispVal, dispUnit) = Settings.TempDisplay.Convert(current.Value, current.Unit);
         SetDisplay($"{dispVal:F0}{dispUnit}", subtitle);
     }
 

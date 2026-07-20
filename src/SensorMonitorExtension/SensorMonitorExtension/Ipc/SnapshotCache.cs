@@ -18,10 +18,12 @@ internal static class SnapshotCache
     public static void SetIntervalMs(int ms) => _refreshMs = System.Math.Max(200, ms);
 
     /// <summary>温度单位等纯显示项变更后，令订阅方（dock band）以最新快照重绘。
-    /// Updated 为私有 event，外部无法直接 invoke，故加此公开触发口。</summary>
+    /// event 只能在声明类型内 invoke，外部无法直接触发，故加此公开触发口。</summary>
     public static void NotifyDisplayChanged()
     {
-        try { Updated?.Invoke(); } catch { /* 订阅方自行防崩，F3；此处再兜一层 */ }
+        // 订阅方自行防崩（F3）；此处再兜一层，异常不许出去（同刷新路径记日志便于排查）。
+        try { Updated?.Invoke(); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"SnapshotCache 显示刷新失败: {ex}"); }
     }
     private static Timer? _timer;
     private static readonly object Gate = new();
