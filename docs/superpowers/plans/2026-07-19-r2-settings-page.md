@@ -123,6 +123,12 @@ git commit -m "feat: SnapshotCache 刷新间隔可配 + 显示变更通知口"
 
 ### Task 3: SettingsManager（CmdPal 内置 Settings）
 
+> ⚠️ **实测更正（2026-07-20）**：下方 Step 1 的代码持久化前提错了——CmdPal 宿主**不**自动存扩展设置，
+> 用裸 `new Settings()` 会导致每次启动回落默认值（本期首版已踩坑）。**实际实现须**继承 Toolkit
+> `JsonSettingsManager`：设 `FilePath = Utilities.BaseSettingsPath("SensorMonitorExtension")/settings.json`，
+> 用继承来的 `Settings` 属性，构造末尾 `LoadSettings()` 读盘、`SettingsChanged` 里 `SaveSettings()` 写盘
+> （均包 try/catch 防坏文件拖垮加载）。以**仓库中 `SettingsManager.cs` 现状为准**，Step 1 代码块仅存历史。
+
 **Files:**
 - Create: `src/SensorMonitorExtension/SensorMonitorExtension/Settings/SettingsManager.cs`
 

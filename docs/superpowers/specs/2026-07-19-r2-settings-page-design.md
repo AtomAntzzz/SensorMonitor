@@ -5,7 +5,7 @@
 
 ## 目标
 
-给扩展加一个**全局设置页**，走 CmdPal **内置 `Settings`** 机制（宿主自动渲染设置页 + 自动持久化），
+给扩展加一个**全局设置页**，走 CmdPal **内置 `Settings`** 机制（宿主自动渲染设置页；持久化经 Toolkit `JsonSettingsManager` 自管，见前提事实修正），
 承载两个全局项：**刷新间隔** 与 **温度单位 °C/°F**。逐传感器选择继续由 A1 的单击选择页 +
 `slots.json` 承担，本期不动；"槽位显隐"经确认与停靠栏原生 pin/unpin 冗余，**去掉**。
 
@@ -33,8 +33,12 @@
   故转换统一按 `Unit == "°C"` 判定，三处一致、无需 `Type`。
 - **三处温度显示位**：`SensorSlotBand.RefreshCore`（dock band）、`SensorPickerPage.GetItems`（选择页）、
   `SensorMonitorExtensionPage.GetItems`（浏览页，`{r.Value:F1} {r.Unit}`）。
-- `add-extension-settings` skill：`ToggleSetting`/`TextSetting`/`ChoiceSetSetting`；`Settings` 由宿主自动持久化；
-  `SettingsChanged` 事件；在 `CommandProvider` 上设 `Settings = manager.Settings` 即自动出设置页。
+- `add-extension-settings` skill：`ToggleSetting`/`TextSetting`/`ChoiceSetSetting`；`SettingsChanged` 事件；
+  在 `CommandProvider` 上设 `Settings = manager.Settings` 即自动出设置页。
+  ⚠️ **持久化更正（2026-07-20 实测）**：宿主**不**自动存扩展设置——它只渲染设置页、并在用户改动时触发 `SettingsChanged`。
+  持久化须扩展自管：`SettingsManager` **继承 Toolkit `JsonSettingsManager`**，设 `FilePath`
+  （`Utilities.BaseSettingsPath("SensorMonitorExtension")/settings.json`），构造末尾 `LoadSettings()` 读盘、
+  `SettingsChanged` 里 `SaveSettings()` 写盘。缺此则每次启动回落种子默认（本期首版即踩此坑）。
 - **无扩展侧测试工程**（仅 `tests/SensorMonitor.Host.Tests`）。
 - R7 Host 空闲自退 = 5min 无请求；本期间隔上限 5s ≪ 5min，band 固定时 Host 永不空闲，R7 不受影响。
 
@@ -127,4 +131,5 @@
 - Host 空闲时长可配（R7 spec 曾提"R2 时再做"，本期范围外，仍保持 5min `const`）。
 - 扩展侧单测工程（`TempDisplay` 手动验证，同 `SlotLogic` 现状）。
 - 自定义设置 UI / 扩展 `slots.json`（一律走 CmdPal 内置 `Settings`）。
-- 温度单位/间隔的自建持久化（宿主自动持久化）。
+- ~~温度单位/间隔的自建持久化（宿主自动持久化）~~ —— **作废**：宿主不自动存，持久化经继承
+  `JsonSettingsManager` 的 `FilePath`+`LoadSettings`/`SaveSettings` 实现（见前提事实修正），属**必做**而非不做。
