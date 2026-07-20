@@ -49,7 +49,7 @@ internal sealed partial class SensorPickerPage : ListPage
         foreach (var c in candidates)
         {
             bool isCurrent = current is not null && c.Key == current.Key;
-            var (dispVal, dispUnit) = Settings.TempDisplay.Format(c.Value, c.Unit);
+            var (dispVal, dispUnit) = Settings.TempDisplay.Convert(c.Value, c.Unit);
             items.Add(new ListItem(new SelectSensorCommand(_band, c.Key))
             {
                 // 当前项标题前置普通 Unicode ✓（避免与列表焦点高亮混淆；不碰 PUA 字形）。

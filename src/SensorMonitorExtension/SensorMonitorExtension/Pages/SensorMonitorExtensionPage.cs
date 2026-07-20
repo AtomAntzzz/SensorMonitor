@@ -43,7 +43,7 @@ internal sealed partial class SensorMonitorExtensionPage : ListPage
             .OrderBy(r => r.Hardware).ThenBy(r => r.Type).ThenBy(r => r.Id)
             .Select(r =>
             {
-                var (dispVal, dispUnit) = Settings.TempDisplay.Format(r.Value, r.Unit);
+                var (dispVal, dispUnit) = Settings.TempDisplay.Convert(r.Value, r.Unit);
                 return (IListItem)new ListItem(new NoOpCommand())
                 {
                     Title = $"{r.Name}: {dispVal:F1} {dispUnit}",
