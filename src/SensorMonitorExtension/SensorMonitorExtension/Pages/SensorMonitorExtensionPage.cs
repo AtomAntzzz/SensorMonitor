@@ -41,10 +41,14 @@ internal sealed partial class SensorMonitorExtensionPage : ListPage
 
         items.AddRange(snapshot.Sensors
             .OrderBy(r => r.Hardware).ThenBy(r => r.Type).ThenBy(r => r.Id)
-            .Select(r => (IListItem)new ListItem(new NoOpCommand())
+            .Select(r =>
             {
-                Title = $"{r.Name}: {r.Value:F1} {r.Unit}",
-                Subtitle = $"{r.Hardware} · {r.Type}",
+                var (dispVal, dispUnit) = Settings.TempDisplay.Format(r.Value, r.Unit);
+                return (IListItem)new ListItem(new NoOpCommand())
+                {
+                    Title = $"{r.Name}: {dispVal:F1} {dispUnit}",
+                    Subtitle = $"{r.Hardware} · {r.Type}",
+                };
             }));
         return [.. items];
     }
