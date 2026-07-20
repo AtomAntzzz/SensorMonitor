@@ -14,6 +14,7 @@ namespace SensorMonitorExtension;
 public partial class SensorMonitorExtensionCommandsProvider : CommandProvider
 {
     private readonly ICommandItem[] _commands;
+    private readonly Settings.SettingsManager _settings = new();
     // 缓存 band 实例（各订阅静态 SnapshotCache.Updated 一次，不泄漏）；
     // 但每次 GetDockBands 用新 WrappedDockItem 包装（B1/重复症状：CmdPal 视 WrappedDockItem
     // 为一次性槽位，缓存同一实例会致 add-menu 重复列出/取消固定后重加异常；官方示例每次 new）。
@@ -23,6 +24,7 @@ public partial class SensorMonitorExtensionCommandsProvider : CommandProvider
     {
         DisplayName = "Sensor Monitor";
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
+        Settings = _settings.Settings;   // 设了才出设置页；初值已在 SettingsManager 构造时 Apply
         _commands = [
             new CommandItem(new SensorMonitorExtensionPage()) { Title = DisplayName },
         ];
