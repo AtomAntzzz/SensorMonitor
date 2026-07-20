@@ -12,7 +12,17 @@ namespace SensorMonitorExtension.Ipc;
 // one-shot 重排（同 Host 侧 F6）：上一轮完成才排下一轮，杜绝回调重叠。
 internal static class SnapshotCache
 {
-    private const int RefreshMs = 1000;
+    private static int _refreshMs = 1000;   // 可配（R2 设置页）；int 读写原子，Timer 读/设置写无需锁
+
+    /// <summary>设置刷新间隔（ms）。夹下限防 0/负值把 Timer 打成忙循环。下一轮重排生效。</summary>
+    public static void SetIntervalMs(int ms) => _refreshMs = System.Math.Max(200, ms);
+
+    /// <summary>温度单位等纯显示项变更后，令订阅方（dock band）以最新快照重绘。
+    /// Updated 为私有 event，外部无法直接 invoke，故加此公开触发口。</summary>
+    public static void NotifyDisplayChanged()
+    {
+        try { Updated?.Invoke(); } catch { /* 订阅方自行防崩，F3；此处再兜一层 */ }
+    }
     private static Timer? _timer;
     private static readonly object Gate = new();
     private static DateTimeOffset _lastAutoLaunch = DateTimeOffset.MinValue;
@@ -59,7 +69,7 @@ internal static class SnapshotCache
         }
         finally
         {
-            try { _timer?.Change(RefreshMs, Timeout.Infinite); } catch (ObjectDisposedException) { }
+            try { _timer?.Change(_refreshMs, Timeout.Infinite); } catch (ObjectDisposedException) { }
         }
     }
 }
