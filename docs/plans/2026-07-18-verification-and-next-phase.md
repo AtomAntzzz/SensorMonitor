@@ -59,7 +59,7 @@
 
 | # | 事项 | 触发条件 / 说明 |
 |---|------|----------------|
-| R2 | 设置页（传感器选择 + 刷新间隔等全局项） | 日用价值最大。基于 A1 已有的"每控件配置"模型（slots.json）扩展，勿另起炉灶；`.github/skills/add-extension-settings` 有现成 skill |
+| ✅ R2 | 设置页（刷新间隔 1/2/5s + 温度单位 °C/°F，全局项） | **已完成（2026-07-20）**：走 CmdPal 内置 Settings，`SettingsManager` 继承 `JsonSettingsManager` 自持久化（宿主不自动存，坑已记录）。范围经 brainstorming 收敛——传感器选择仍归 A1 的 `slots.json`，槽位显隐用原生 pin/unpin，均按 YAGNI 未纳入。见 `docs/superpowers/plans/2026-07-19-r2-settings-page.md` |
 | ~~R6~~ | ~~温度阈值变色~~（**spike 证伪，2026-07-19 搁置**） | Dock band **不渲染 Tag/颜色**（红底"热"Tag 实测在 dock 完全不显；SDK 0.9.260303001）。若要做只能降级"超阈值换红图标字形/标题加⚠"，价值有限，暂不做 |
 | R4 | Host 打进 MSIX 随扩展分发（A2 已铺路） | 想在第二台设备安装/对外分发时；消除 `SENSORMONITOR_HOST_EXE` 依赖。前置：A2 的裁剪修复已就位 |
 | ✅ R7 | Host 空闲自退出（5min 无管道请求自退，静默通道会拉回） | **已完成（2026-07-19）**：`PipeJsonServer.LastRequestUtc` + Program.cs 空闲 Timer；见 `docs/superpowers/plans/2026-07-19-r7-host-idle-exit.md` |
