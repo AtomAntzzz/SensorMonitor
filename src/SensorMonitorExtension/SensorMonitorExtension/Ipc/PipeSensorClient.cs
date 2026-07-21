@@ -26,7 +26,8 @@ internal static class PipeSensorClient
             using var writer = new StreamWriter(client) { AutoFlush = true };
             writer.WriteLine("GET");
             var line = reader.ReadLine();
-            return line is null ? null : JsonSerializer.Deserialize<SensorSnapshot>(line);
+            // 用 source-gen 上下文而非反射（裁剪构建禁用反射式序列化，A2 实测）。
+            return line is null ? null : JsonSerializer.Deserialize(line, SensorJsonContext.Default.SensorSnapshot);
         }
         catch (Exception ex) when (
             ex is TimeoutException or IOException or JsonException or ObjectDisposedException)

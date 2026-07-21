@@ -54,4 +54,26 @@ public class PipeJsonServerTests
         Assert.Same(readTask, done);            // 5s 内拿到响应，未被挂死客户端阻塞
         Assert.Contains("5200", await readTask);
     }
+
+    [Fact]
+    public async Task LastRequestUtc_Advances_On_Get()
+    {
+        var pipeName = $"SensorMonitor.Test.{Guid.NewGuid():N}";
+        var snapshot = new SensorSnapshot(DateTimeOffset.UtcNow,
+            [new SensorReading("/cpu/0/clock/1", "CPU", "Core #1", "Clock", 5200f, "MHz")]);
+        using var server = new PipeJsonServer(pipeName, () => snapshot);
+        var before = server.LastRequestUtc;   // 构造时 ≈ 启动时刻
+        server.Start();
+
+        await Task.Delay(50);                 // 跨过系统时钟粒度（~15ms），确保时间戳可辨
+        await using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
+        await client.ConnectAsync(2000);
+        using var reader = new StreamReader(client);
+        using var writer = new StreamWriter(client) { AutoFlush = true };
+        await writer.WriteLineAsync("GET");
+        await reader.ReadLineAsync();          // 收到响应 = 服务端已在写响应前记下请求时间
+
+        Assert.True(server.LastRequestUtc > before,
+            $"LastRequestUtc 应在 GET 后前进：before={before:o} after={server.LastRequestUtc:o}");
+    }
 }
