@@ -48,10 +48,19 @@ Filename: "{sys}\schtasks.exe"; Parameters: "/Run /TN SensorMonitor.Host"; Flags
 
 [UninstallRun]
 ; 停 Host → 删任务 → 移除扩展（当前用户 + 预置）
-Filename: "{sys}\schtasks.exe"; Parameters: "/End /TN SensorMonitor.Host"; Flags: runhidden; RunOnceId: "EndHost"
+Filename: "{sys}\schtasks.exe"; Parameters: "/End /TN SensorMonitor.Host"; Flags: runhidden waituntilterminated; RunOnceId: "EndHost"
 Filename: "{app}\Host\SensorMonitor.Host.exe"; Parameters: "--uninstall-task"; Flags: runhidden waituntilterminated; RunOnceId: "DelTask"
 Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Get-AppxPackage *SensorMonitorExtension* | Remove-AppxPackage; Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like '*SensorMonitorExtension*' | ForEach-Object {{ Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName }"""; Flags: runhidden waituntilterminated; RunOnceId: "RemovePkg"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
 Type: filesandordirs; Name: "{commonappdata}\SensorMonitor"
+
+[Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var rc: Integer;
+begin
+  // 升级覆盖前停掉在跑的 Host，避免锁死 {app}\Host\SensorMonitor.Host.exe。首装时任务不存在，schtasks 返回非 0，忽略即可。
+  Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN SensorMonitor.Host', '', SW_HIDE, ewWaitUntilTerminated, rc);
+  Result := '';
+end;
