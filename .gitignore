@@ -24,3 +24,7 @@ packages/
 # 本机杂项
 *.log
 Thumbs.db
+
+# R4 安装器构建产物（stage 中间物 + 签名安装器 exe，不入库）
+installer/stage/
+installer/Output/
