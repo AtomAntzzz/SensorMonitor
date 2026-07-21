@@ -22,16 +22,18 @@ if ($LASTEXITCODE) { throw "Host publish 失败" }
 # 2) 构建 + 签名扩展 MSIX（复用 A2 链路）
 $appxDir = Join-Path $stage 'appx'
 & dotnet build "$root\src\SensorMonitorExtension\SensorMonitorExtension\SensorMonitorExtension.csproj" `
-    -c Release -p:Platform=$plat -p:GenerateAppxPackageOnBuild=true -p:AppxBundle=Never -p:AppxPackageDir="$appxDir\"
+    -c Release -p:Platform=$plat -p:GenerateAppxPackageOnBuild=true -p:AppxBundle=Never -p:AppxPackageDir="$appxDir\\"
 if ($LASTEXITCODE) { throw "MSIX build 失败" }
-$msix = Get-ChildItem $appxDir -Recurse -Filter *.msix | Select-Object -First 1
+$msix = Get-ChildItem $appxDir -Recurse -Filter "SensorMonitorExtension_*_$Arch.msix" | Select-Object -First 1
 if (-not $msix) { throw "未找到 .msix（检查 AppxPackageDir）" }
 
 if (-not $Thumbprint) {
     $Thumbprint = (Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq 'CN=SensorMonitor Dev' } | Select-Object -First 1).Thumbprint
     if (-not $Thumbprint) { throw "未找到 CN=SensorMonitor Dev 证书；见 docs/references/msix-packaging.md 生成" }
 }
-$signtool = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\$Arch\signtool.exe"
+$signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\10.*\$Arch\signtool.exe" -ErrorAction Ignore |
+    Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+if (-not $signtool) { throw "未找到 signtool（Windows Kits 10 bin\<ver>\$Arch）" }
 & $signtool sign /fd SHA256 /sha1 $Thumbprint $msix.FullName
 if ($LASTEXITCODE) { throw "MSIX 签名失败" }
 
