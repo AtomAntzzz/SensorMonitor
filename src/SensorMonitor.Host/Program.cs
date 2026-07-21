@@ -6,7 +6,7 @@ using SensorMonitor.Host.Model;
 using SensorMonitor.Host.Sensors;
 
 const string PipeName = "SensorMonitor.Host.v1";
-const int RefreshMs = 2000;
+const int RefreshMs = 1000;
 
 // 调试分支：打印一次传感器快照后退出（放在建 Mutex 之前，不占单实例名额）。
 // WinExe 无自带控制台（D8），贴附父进程控制台以保住从终端启动时的输出。
@@ -53,6 +53,25 @@ server.Start();
 
 HostLog.Write($"Host 启动，管道: {PipeName}，刷新间隔: {RefreshMs}ms。");
 var exit = new ManualResetEventSlim();
+
+// R7：末次管道请求后空闲超 IdleTimeoutMinutes 分钟则自退，回收常驻提权进程。
+// 有 band 固定时扩展每 1s 请求 → 永不空闲；无人用才触发。LastRequestUtc 初始=启动时刻，
+// 完全没人连的 Host 启动 5min 后也自退。
+const int IdleTimeoutMinutes = 5;
+const int IdleCheckMs = 60_000;   // 每 60s 查一次，廉价
+using var idleTimer = new Timer(_ =>
+{
+    try
+    {
+        if (DateTimeOffset.UtcNow - server.LastRequestUtc > TimeSpan.FromMinutes(IdleTimeoutMinutes))
+        {
+            HostLog.Write($"空闲 {IdleTimeoutMinutes} 分钟无管道请求，自退");
+            exit.Set();
+        }
+    }
+    catch (Exception ex) { HostLog.Write($"空闲检查失败: {ex}"); }  // Timer 线程异常不许带崩 Host
+}, null, IdleCheckMs, IdleCheckMs);
+
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; exit.Set(); }; // 无控制台时不会触发，保留无害
 exit.Wait();
 return 0;

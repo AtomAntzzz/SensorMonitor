@@ -12,6 +12,7 @@ internal sealed partial class LaunchHostCommand : InvokableCommand
     public LaunchHostCommand()
     {
         Name = "启动传感器 Host";
+        Icon = new IconInfo("\uE768");  // Play 字形：启动 Host
         Id = "com.sensormonitor.launchhost";
     }
 

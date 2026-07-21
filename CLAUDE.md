@@ -5,19 +5,39 @@
 
 ## 当前状态
 
-**MVP + 加固优化（post-mvp-hardening Task 1–8）代码完成，11 单测全绿；部分实机验证待桌面会话。**
+**MVP + 加固优化（post-mvp-hardening Task 1–8）完成，11 单测全绿；Phase 0 实机验证 V1–V8 全部通过（2026-07-19 收口）。**
 
 - ✅ MVP 全链路已在实机验证过（Dock 实时显示 CPU 频率/CPU 温度/GPU 温度）。
 - ✅ 加固：管道单连接超时、刷新防重入、Host 无窗口化+文件日志（`%ProgramData%\SensorMonitor\host.log`）、
   扩展防崩+数据过期提示、计划任务静默提权（`--install-task`）、band 懒启动、传感器浏览页。
-- ⏳ 待桌面手动验证：VS Deploy 新扩展 + Reload、`--install-task` 注册与静默拉起、无窗口 Host 观察
-  （清单见 `docs/plans/2026-07-18-post-mvp-hardening.md` 各 task 的验证步骤）。
+- ✅ 实机验证收口：CLI 部署（免 VS）、静默提权拉起/停止（`schtasks /Run\|/End` 均免提权）、无窗口
+  Host + host.log、数据过期提示（假管道服务端测法，见 verification 计划 V4）、静默自动重连、
+  浏览页、登录全链路无 UAC、PawnIO 免重启读全 135 传感器。
 
-后续优化路线（R2/R4/R6/R7/R8）见 `docs/plans/2026-07-18-post-mvp-hardening.md` 末尾。
+- ✅ A1（2026-07-19）：Dock 拆为 4 个预设槽位控件（CPU 频率/CPU 温度/GPU 温度/主板温度），
+  类内右键轮换（上一个/下一个，带图标）、选择持久化（LocalState slots.json）、共享 SnapshotCache
+  每 1s 轮询；"启动 Host"菜单沉底；旧合并 band 已移除。7 项验收全过。
+- ✅ A1 增强（2026-07-19）：**单击 band 打开类别选择页**（`Pages/SensorPickerPage.cs`，列该类候选、
+  ✓ 标当前、点选即换、`RaiseItemsChanged` 刷新）；编辑停靠栏 add-menu 的 band 显示类别图标
+  （WrappedDockItem.Icon）；Provider 改每次新建 WrappedDockItem（对齐官方；"重复 band"实为
+  开发期 `x-cmdpal://reload` 累加假象、非发布 bug，净启每 band 一份）。
+- ✅ A2（2026-07-19）：MSIX 打包链路验证——自签名 dev 身份（`CN=SensorMonitor Dev`）、x64 Release
+  已签名 .msix 实装 + Dock 正常、x64+ARM64 bundle 生成；步骤见 `docs/references/msix-packaging.md`。
+  **关键发现并修复**：Release 裁剪禁用反射式 System.Text.Json → 打包版曾全"Host 未运行"，
+  已改 source-gen JSON 上下文（`Ipc/SensorJsonContext.cs`）解决。
+- ✅ R7（2026-07-19）：Host 末次管道请求后 5min 无请求自退（`PipeJsonServer.LastRequestUtc` +
+  Program.cs 空闲 Timer），把常驻提权进程收敛为按需；有 band 固定时每 1s 轮询永不退，自退后静默通道拉回。12 单测。
+- ✅ R2（2026-07-20）：设置页（刷新间隔 1/2/5s + 温度单位 °C/°F），走 CmdPal 内置 Settings；
+  `Settings/SettingsManager.cs` 继承 `JsonSettingsManager` 自持久化（**宿主不自动存**扩展设置——须 `FilePath`+
+  `LoadSettings`/`SaveSettings`，否则重启回落默认）；`TempDisplay` 纯转换套用到 dock band/选择页/浏览页三处。
+  纯扩展侧、Host 零改动。实机验证持久化 OK。
+
+后续路线与产品诉求（A2 MSIX 打包/A3 次级列表 + R 系列）见
+`docs/plans/2026-07-18-verification-and-next-phase.md`。
 
 ## 一句话架构
 
-双进程：`SensorMonitor.Host`（提权，LibreHardwareMonitorLib 读传感器，命名管道供数据）+ `SensorMonitorExtension`（CmdPal MSIX 扩展，Dock band 每 2s 轮询刷新，检测到 Host 未运行自动 UAC 拉起）。**为什么必须双进程**：见 `docs/architecture.md` D1。
+双进程：`SensorMonitor.Host`（提权，LibreHardwareMonitorLib 读传感器，命名管道供数据）+ `SensorMonitorExtension`（CmdPal MSIX 扩展，Dock 槽位控件共享 SnapshotCache 每 1s 轮询刷新，检测到 Host 未运行走计划任务静默拉起）。**为什么必须双进程**：见 `docs/architecture.md` D1。
 
 ## 文档地图（按需读，勿一次全读）
 
@@ -27,6 +47,7 @@
 | 动架构 / 质疑某个设计 | `docs/architecture.md`（D1–D8，推翻前先读依据） |
 | 碰扩展 / Dock / 部署问题 | `docs/references/cmdpal-extension.md` |
 | 碰传感器 / 权限 / 驱动问题 | `docs/references/sensor-sources.md` |
+| 打 MSIX 包 / 签名 / 分发 | `docs/references/msix-packaging.md` |
 
 ## 高频坑（详情在对应参考文档）
 
@@ -37,11 +58,18 @@
 5. 提权管道服务端必须显式 `PipeSecurity` 放开 Authenticated Users，否则非提权扩展连不上。
 6. **Host 运行时锁死自己的 `bin/`**：重建/跑测试前先停 Host（管理员终端 `taskkill /f /im SensorMonitor.Host.exe`），
    或用 `--artifacts-path` 输出到独立目录绕开（agent 会话无提权时的标准做法）。
+   **扩展同理**：松散注册的扩展被 CmdPal 激活后进程常驻，锁死扩展 `bin/`——CLI 重建前先
+   `taskkill /f /im SensorMonitorExtension.exe`（无需提权；`scripts/setup.ps1` 阶段 4 已内置）。
 7. 自动拉起遵守 D7：自动路径只走计划任务静默通道，UAC 只允许出现在用户显式点击。
+8. **Dock band 属性更新必须变化保护**：CmdPal 宿主统一渲染所有扩展的 dock band，高频冗余属性
+   变更事件会淹没宿主更新队列、**卡死其它扩展的合并 band**（实测每 1s 无条件重设 Title/Subtitle
+   会冻住 Performance Monitor 的合并 band）。只在格式化字符串真变时才赋值（`SetDisplay` 模式）。
+9. **验证 dock band 数量/行为要净启 CmdPal**：`x-cmdpal://reload` 跨会话累加 band，制造"每 band 重复 N 个"假象（N==reload 次数），非发布 bug。
 
 ## 常用命令
 
 ```bash
+scripts\setup.cmd                 # 新机器一键引导（自提权，装工具链+构建+部署+计划任务）；-CheckOnly 只体检
 dotnet test tests/SensorMonitor.Host.Tests            # Host 侧全部单测
 dotnet run --project src/SensorMonitor.Host -- --dump  # 管理员终端：打印本机传感器 JSON
 # 管理员终端一次性注册计划任务（此后扩展可静默拉起 Host，无 UAC）：
