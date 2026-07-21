@@ -11,7 +11,7 @@
 > **测试策略（重要）**：本期几乎无可单测代码——扩展仅一行路径改动（无扩展测试工程，同 R2 现状），其余是 Inno 脚本 / MSBuild 发布 / MSIX 注册 / 证书，无自动化测试框架。故各任务以 **构建/编译通过 + 产出物存在** 为闸，功能正确性靠 **Task 6 干净机手动验收**（这类打包/提权/发现行为只有实机能验，正如 A2）。Host 12 单测作回归（Host 近乎零改）。这偏离 writing-plans 的 TDD 默认，是本任务性质决定，非疏漏。
 
 > **前置条件（实现者机器需具备）**：
-> - **Inno Setup 6.3+**（含 `ISCC.exe`，默认 `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`）；ARM64 支持需 6.3+。
+> - **Inno Setup 6.3+**（含 `ISCC.exe`）。`winget install JRSoftware.InnoSetup` 装到**每用户**路径 `%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe`；传统安装器装到 `C:\Program Files (x86)\Inno Setup 6\`。`build.ps1` 两处都探测。ARM64 支持需 6.3+。
 > - A2 的 dev 签名证书 `CN=SensorMonitor Dev` 在 `Cert:\CurrentUser\My`（缺则按 `docs/references/msix-packaging.md`「一次性准备」生成）。
 > - signtool：`C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\<arch>\signtool.exe`（A2 已用）。
 > - .NET SDK（构建/发布）。
@@ -146,7 +146,8 @@ Type: filesandordirs; Name: "{commonappdata}\SensorMonitor"
 用 ISCC 只做预处理语法检查（缺 `/D` 外部文件仍会在 `[Files]` 校验失败，属正常——此步只看**语法**错误，不看文件存在性）：
 
 ```bash
-"/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DMyHostDir=." "/DMyMsix=SensorMonitor.iss" "/DMyMsixName=x" "/DMyCer=SensorMonitor.iss" "/DMyCerName=x" installer/SensorMonitor.iss 2>&1 | head -20 || true
+ISCC=$(ls "$LOCALAPPDATA/Programs/Inno Setup 6/ISCC.exe" "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" 2>/dev/null | head -1)
+"$ISCC" "/DMyHostDir=." "/DMyMsix=SensorMonitor.iss" "/DMyMsixName=x" "/DMyCer=SensorMonitor.iss" "/DMyCerName=x" installer/SensorMonitor.iss 2>&1 | head -20 || true
 ```
 
 Expected: 无 `Unknown` / 语法类报错（可以有 "files … does not exist" 类校验错，那是缺真实 staging，Task 4 会补齐）。
@@ -209,9 +210,13 @@ if ($LASTEXITCODE) { throw "MSIX 签名失败" }
 $cer = Join-Path $stage 'SensorMonitorDev.cer'
 Export-Certificate -Cert "Cert:\CurrentUser\My\$Thumbprint" -FilePath $cer | Out-Null
 
-# 4) ISCC 编译安装器
-$iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-if (-not (Test-Path $iscc)) { throw "未找到 Inno Setup 6（$iscc）" }
+# 4) ISCC 编译安装器（探测 winget 每用户路径 + 传统机器级路径）
+$iscc = @(
+    "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
+    "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+    "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $iscc) { throw "未找到 Inno Setup 6（ISCC.exe）；winget install JRSoftware.InnoSetup" }
 & $iscc "/DMyArch=$Arch" "/DMyVersion=$Version" "/DMyHostDir=$hostOut" `
     "/DMyMsix=$($msix.FullName)" "/DMyMsixName=$($msix.Name)" `
     "/DMyCer=$cer" "/DMyCerName=SensorMonitorDev.cer" "$here\SensorMonitor.iss"
