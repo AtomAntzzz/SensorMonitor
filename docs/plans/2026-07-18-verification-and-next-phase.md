@@ -73,7 +73,15 @@
   主板温度）而非缺驱动 → 提示误导。建议：空态分两种——快照整体为空 / Host 未运行 → 保留"需 PawnIO 驱动"；
   快照有数据但本类别空 → 显示"该机型无此传感器"（或类似）。落点：`SlotCategories.cs` 的 `EmptyHint` +
   `SensorSlotBand.RefreshCore` 的空态分支（那里能拿到 `SnapshotCache.Current` 判整体是否有数据）。
+  **同一问题的另一面（2026-07-22 补记）**：**未装 PawnIO 时 CPU 频率/温度 sensor 存在但读 0** → 该类别**非空**（候选值=0）
+  → band 显示"0 MHz"/"0°C" 而非空提示，**比空提示更误导**（像真实读数）。同处一并修：`SlotCategories.cs` 候选构建把
+  温度/频率的 **0 / NaN 视作无数据**（不生成候选），落到空态分支走上面的文案逻辑。
 - **设置页 dev-reload 空白（非真实 bug，不修）** — CmdPal 里"禁用扩展→再启用"后第一次打开设置页**整表单空白**，
   再开即恢复；**干净装 / net 重启 CmdPal 不复现**（2026-07-22 干净机确认）。经溯源（Toolkit 源码）我方设置内容生成
   完全正确，系 CmdPal 宿主**热重载缓存了旧的空设置页**所致，属宿主侧、我方无干净 hook 可控，且不影响真实分发。
   记此以免重复排查。
+- **PawnIO 后装需重启 Host 才生效** — 2026-07-22 发现。Host 启动时 init 一次 `LibreHardwareMonitorLib`（枚举硬件/驱动），
+  之后**再装 PawnIO 无效**，直到 Host 重启才带上驱动重新枚举。用户实测 workaround：手动杀掉后台 `SensorMonitor.Host.exe`
+  → 计划任务静默重拉 → 重新 init 即读到数据。考虑（择一/组合）：① 文档提示"先装 PawnIO 再首启，或后装后重启 Host"；
+  ② Host 侧检测"关键 sensor 长期读 0/缺失"时周期性重建 `Computer`；③ 安装器/PawnIO 安装后触发一次 `schtasks /End`。
+  优先级低，多数用户装一次驱动即稳定。
