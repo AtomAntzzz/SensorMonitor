@@ -89,7 +89,10 @@ internal sealed partial class SensorSlotBand : ListItem
         var current = SlotLogic.Resolve(_cat.GetCandidates(snap.Sensors), _currentKey);
         if (current is null)
         {
-            SetDisplay("--", _cat.EmptyHint);  // 如无 PawnIO 时 CPU 两类候选为空
+            // 空候选分两种：有驱动数据（PawnIO 在工作）→ 该机型确无此传感器；
+            // 否则可能真缺 PawnIO 驱动（避免干净机误报缺驱动，见坑 #4）。
+            var hint = SlotCategories.HasDriverData(snap.Sensors) ? _cat.MissingHint : _cat.EmptyHint;
+            SetDisplay("--", hint);
             return;
         }
         var age = DateTimeOffset.Now - snap.Timestamp;

@@ -11,7 +11,7 @@
   <Identity
     Name="SensorMonitorExtension"
     Publisher="CN=SensorMonitor Dev"
-    Version="0.0.1.0" />
+    Version="0.0.2.0" />
 
   <Properties>
     <DisplayName>Sensor Monitor</DisplayName>
