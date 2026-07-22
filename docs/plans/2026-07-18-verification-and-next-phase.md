@@ -71,10 +71,15 @@
   `cpuclock`/`cputemp`/`boardtemp` 三类的空态字幕曾恒为"需 PawnIO 驱动"；当 Host 在跑、驱动正常但某类别恰无传感器
   （如无 `/lpc` 主板温度）时会误导为缺驱动。修复：空态分两种——`SlotCategory` 加 `MissingHint` 字段；
   `SensorSlotBand.RefreshCore` 空态分支按 `SlotCategories.HasDriverData(snap.Sensors)` 择字。
-  **判据未用原提案的"快照整体是否为空"，改用"是否存在 PawnIO/ring0 驱动数据"**（快照含任一 `/intelcpu`/`/amdcpu`/`/lpc`
-  传感器）——因"无 PawnIO 但有 GPU"是常见机型，此时快照非空但 CPU 类确因缺驱动而空，整体空判据会误报"该机型无此传感器"、
-  反劝退装驱动。有驱动数据→`MissingHint`"该机型无此传感器"；否则→`EmptyHint`"需 PawnIO 驱动"。GPU 类不依赖 PawnIO，
-  两态同字"无 GPU 温度传感器"。纯扩展侧 UX，Host 零改动。
+  **判据未用原提案的"快照整体是否为空"，改用"是否存在**有效**的 PawnIO/ring0 驱动读数"**（有效 CPU 温度或任一
+  `/lpc` 读数；有效=finite 且非 0）——因"无 PawnIO 但有 GPU"是常见机型，快照非空但 CPU 类确因缺驱动而空，
+  整体空判据会误报"该机型无此传感器"、反劝退装驱动。有驱动数据→`MissingHint`"该机型无此传感器"；否则→`EmptyHint`"需 PawnIO 驱动"。
+  GPU 类不依赖 PawnIO，两态同字"无 GPU 温度传感器"。
+  **关键坑（2026-07-22 补修）：未装 PawnIO 时 CPU 温度/频率传感器仍在快照里但读 0（或 NaN）**——`LhmSensorReader`
+  只滤 `null`（`sensor.Value is float v`），`0f`/`NaN` 照发。故：① 候选构建（`Temps` 与 cpuclock lambda）用
+  `IsValid`（`float.IsFinite(v) && v != 0`）滤掉 0/NaN，使无 PawnIO 时 CPU 两类正确落空态而非显"0°C/0MHz"；
+  ② `HasDriverData` 只认**有效** CPU **温度**或 `/lpc` 读数（CPU 负载走性能计数器、免驱动亦有效，不能当驱动信号），
+  按值判而非仅按存在判——否则 ① 滤空后 CPU 类会被误报"该机型无此传感器"。纯扩展侧，Host 零改动。
 - **设置页 dev-reload 空白（非真实 bug，不修）** — CmdPal 里"禁用扩展→再启用"后第一次打开设置页**整表单空白**，
   再开即恢复；**干净装 / net 重启 CmdPal 不复现**（2026-07-22 干净机确认）。经溯源（Toolkit 源码）我方设置内容生成
   完全正确，系 CmdPal 宿主**热重载缓存了旧的空设置页**所致，属宿主侧、我方无干净 hook 可控，且不影响真实分发。
