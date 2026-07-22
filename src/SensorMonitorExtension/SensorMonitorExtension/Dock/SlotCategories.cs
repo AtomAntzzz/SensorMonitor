@@ -11,9 +11,16 @@ internal static class SlotCategories
     private static bool IsCpu(SensorReading r) =>
         r.Id.StartsWith("/intelcpu") || r.Id.StartsWith("/amdcpu");
 
+    /// <summary>
+    /// 提权硬件驱动（PawnIO/ring0）就绪信号：CPU(Intel/AMD) 或主板 LPC 只要读到任一传感器，
+    /// 说明驱动在工作；此时某类别仍空即"该机型确无此传感器"而非缺驱动（区分空态提示用）。
+    /// </summary>
+    public static bool HasDriverData(IReadOnlyList<SensorReading> s) =>
+        s.Any(r => IsCpu(r) || r.Id.StartsWith("/lpc"));
+
     public static readonly SlotCategory[] All =
     [
-        new("cpuclock", "CPU 频率", "核心", "\uEC4A", "需 PawnIO 驱动", s =>
+        new("cpuclock", "CPU 频率", "核心", "\uEC4A", "需 PawnIO 驱动", "该机型无此传感器", s =>
         {
             var clocks = s.Where(r => r.Type == "Clock" && IsCpu(r)).OrderBy(r => r.Id).ToList();
             if (clocks.Count == 0) return [];
@@ -24,11 +31,12 @@ internal static class SlotCategories
             list.AddRange(clocks.Select(r => new SlotCandidate(r.Id, r.Name, r.Value, r.Unit, false)));
             return list;
         }),
-        new("cputemp", "CPU 温度", "温度点", "\uE950", "需 PawnIO 驱动", s =>
+        new("cputemp", "CPU 温度", "温度点", "\uE950", "需 PawnIO 驱动", "该机型无此传感器", s =>
             Temps(s, IsCpu, r => r.Name == "CPU Package")),
-        new("gputemp", "GPU 温度", "温度点", "\uE7F4", "无 GPU 温度传感器", s =>
+        // GPU 不依赖 PawnIO，两态提示同字（HasDriverData 分支对 GPU 无实义）。
+        new("gputemp", "GPU 温度", "温度点", "\uE7F4", "无 GPU 温度传感器", "无 GPU 温度传感器", s =>
             Temps(s, r => r.Id.StartsWith("/gpu"), r => r.Name == "GPU Core")),
-        new("boardtemp", "主板温度", "温度点", "\uE9CA", "需 PawnIO 驱动", s =>
+        new("boardtemp", "主板温度", "温度点", "\uE9CA", "需 PawnIO 驱动", "该机型无此传感器", s =>
             Temps(s, r => r.Id.StartsWith("/lpc"), r => false)),  // 默认=排序首项
     ];
 
