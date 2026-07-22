@@ -3,7 +3,7 @@
 param(
     [ValidateSet('x64','arm64')] [string]$Arch = 'x64',
     [string]$Thumbprint,          # 不传则自动找 CN=SensorMonitor Dev
-    [string]$Version = '0.0.1.0'
+    [string]$Version = '0.0.2.0'
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot

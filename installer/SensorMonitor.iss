@@ -2,7 +2,7 @@
 ; 不手工双击编译（缺 /D 变量会失败）。
 
 #ifndef MyVersion
-  #define MyVersion "0.0.1.0"
+  #define MyVersion "0.0.2.0"
 #endif
 #ifndef MyArch
   #define MyArch "x64"
@@ -42,7 +42,7 @@ Filename: "{sys}\certutil.exe"; Parameters: "-addstore -f TrustedPeople ""{tmp}\
 ; 2) 注册计划任务：跑装好的 Host，TaskInstaller 以 Environment.ProcessPath 作 /TR，即本 {app}\Host 路径
 Filename: "{app}\Host\SensorMonitor.Host.exe"; Parameters: "--install-task"; Flags: runhidden waituntilterminated; StatusMsg: "注册后台服务…"
 ; 3) 全机预置扩展 MSIX + 当前用户即时注册
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Add-AppxProvisionedPackage -Online -PackagePath '{tmp}\{#MyMsixName}' -SkipLicense; Add-AppxPackage -Path '{tmp}\{#MyMsixName}'"""; Flags: runhidden waituntilterminated; StatusMsg: "注册命令面板扩展…"
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Add-AppxProvisionedPackage -Online -PackagePath '{tmp}\{#MyMsixName}' -SkipLicense; Add-AppxPackage -Path '{tmp}\{#MyMsixName}' -ForceUpdateFromAnyVersion -ForceApplicationShutdown"""; Flags: runhidden waituntilterminated; StatusMsg: "注册命令面板扩展…"
 ; 4) 立即启动 Host（免等下次登录）
 Filename: "{sys}\schtasks.exe"; Parameters: "/Run /TN SensorMonitor.Host"; Flags: runhidden
 
