@@ -64,3 +64,16 @@
 | ✅ R4 | 分发安装器（签名 Inno：自包含 Host + 计划任务 + 完整扩展 MSIX 全机预置） | **已完成（2026-07-20）**：一键装、装时一次 UAC、运行期零 UAC、一处卸载全清；消除 `SENSORMONITOR_HOST_EXE`。方案经 brainstorm 收敛——**非 MS Store**（驱动+提权 spike 证伪）、非 sparse（CmdPal 发现未证实），扩展仍完整 MSIX。干净机实测通过（发现+读数+卸载清任务；CPU/主板温度仍需用户另装 PawnIO）。见 `docs/superpowers/plans/2026-07-20-r4-installer-distribution.md` + `docs/references/installer.md`。**R4b**（WinGet/Release 提交 + 真证书 + 安装器健壮性硬化）后续 |
 | ✅ R7 | Host 空闲自退出（5min 无管道请求自退，静默通道会拉回） | **已完成（2026-07-19）**：`PipeJsonServer.LastRequestUtc` + Program.cs 空闲 Timer；见 `docs/superpowers/plans/2026-07-19-r7-host-idle-exit.md` |
 | R8 | 管道抢注防护（校验服务端签名/路径） | 数据用途升级（如接入自动化决策）时；当前只读非敏感，维持接受风险 |
+
+## 小问题 / 待办细项（已记录，未排期）
+
+- **空数据提示文案误导（"需 PawnIO 驱动"）** — 2026-07-22 干净机实测发现。`Dock/SlotCategories.cs` 里
+  `cpuclock`/`cputemp`/`boardtemp` 三类的 `EmptyHint` 恒为"需 PawnIO 驱动"。但当 **Host 在跑、快照有其它传感器数据**
+  （说明驱动正常——如干净机上 CPU 温度/频率能读）却唯独某类别空时，真实原因多是"**该机型无此传感器**"（如无 `/lpc`
+  主板温度）而非缺驱动 → 提示误导。建议：空态分两种——快照整体为空 / Host 未运行 → 保留"需 PawnIO 驱动"；
+  快照有数据但本类别空 → 显示"该机型无此传感器"（或类似）。落点：`SlotCategories.cs` 的 `EmptyHint` +
+  `SensorSlotBand.RefreshCore` 的空态分支（那里能拿到 `SnapshotCache.Current` 判整体是否有数据）。
+- **设置页 dev-reload 空白（非真实 bug，不修）** — CmdPal 里"禁用扩展→再启用"后第一次打开设置页**整表单空白**，
+  再开即恢复；**干净装 / net 重启 CmdPal 不复现**（2026-07-22 干净机确认）。经溯源（Toolkit 源码）我方设置内容生成
+  完全正确，系 CmdPal 宿主**热重载缓存了旧的空设置页**所致，属宿主侧、我方无干净 hook 可控，且不影响真实分发。
+  记此以免重复排查。
