@@ -31,6 +31,12 @@
   `Settings/SettingsManager.cs` 继承 `JsonSettingsManager` 自持久化（**宿主不自动存**扩展设置——须 `FilePath`+
   `LoadSettings`/`SaveSettings`，否则重启回落默认）；`TempDisplay` 纯转换套用到 dock band/选择页/浏览页三处。
   纯扩展侧、Host 零改动。实机验证持久化 OK。
+- ✅ R4（2026-07-20）：签名 **Inno 安装器**（`installer/`）一键装「自包含 Host→`%ProgramFiles%\SensorMonitor\Host\`
+  + 计划任务 + 完整扩展 MSIX 全机预置」，装时一次 UAC、运行期零 UAC、一处卸载全清；消除 `SENSORMONITOR_HOST_EXE` 依赖。
+  干净机实测：CmdPal 发现扩展 + 出读数（无 env var / 无预装 .NET）、卸载清任务。**MS Store 出局**（驱动+提权，spike 证伪）、
+  sparse 出局（CmdPal 发现未证实）；扩展仅改 `ResolveHostPath` 一行。见 `docs/references/installer.md`。
+  已知限制：CPU/主板温度需用户**另装 PawnIO 驱动**（不在包内）；R4b = WinGet/Release 提交 + 真证书 + 两项安装器健壮性硬化
+  （`[Run]` 失败显式化 / 双卸载入口命名消歧）。
 
 后续路线与产品诉求（A2 MSIX 打包/A3 次级列表 + R 系列）见
 `docs/plans/2026-07-18-verification-and-next-phase.md`。
