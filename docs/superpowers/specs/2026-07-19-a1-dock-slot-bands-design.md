@@ -20,9 +20,9 @@
 ## 架构（方案甲：通用槽位类 + 声明式类别定义）
 
 ```
-SensorMonitorExtensionCommandsProvider
+SysPulseExtensionCommandsProvider
   └─ GetDockBands() → 4 × WrappedDockItem（各包一个 SensorSlotBand）
-       band ID：com.sensormonitor.cpuclock / cputemp / gputemp / boardtemp
+       band ID：com.syspulse.cpuclock / cputemp / gputemp / boardtemp
 
 SensorSlotBand : ListItem       ← 一个可复用类，4 个实例
   由 SlotCategory 定义参数化：{ Id, 类别名, 图标, Filter(快照→候选列表), 默认项选择 }
@@ -86,7 +86,7 @@ SlotLogic（静态类，无 UI 依赖）
 
 ## 变更范围
 
-- 改：`SensorMonitorExtensionCommandsProvider.cs`（返回 4 band）
+- 改：`SysPulseExtensionCommandsProvider.cs`（返回 4 band）
 - 新增：`Dock/SensorSlotBand.cs`、`Dock/SlotCategory.cs`、`Dock/SlotLogic.cs`、`Ipc/SnapshotCache.cs`、轮换命令类
 - 删：`Dock/SensorDockBand.cs`（旧合并 band）
 - 不动：Host 全部、浏览页、`PipeSensorClient`、部署脚本

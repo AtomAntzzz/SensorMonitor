@@ -1,4 +1,4 @@
-# SensorMonitor — Agent 导航
+# SysPulse — Agent 导航
 
 > PowerToys Command Palette **Dock 常驻硬件传感器显示扩展**（CPU 频率 / 主板温度 / GPU 温度）。
 > C# / .NET 8 · CmdPal Extensions SDK ≥ 0.9.260303001 · LibreHardwareMonitorLib
@@ -8,7 +8,7 @@
 **MVP + 加固优化（post-mvp-hardening Task 1–8）完成，11 单测全绿；Phase 0 实机验证 V1–V8 全部通过（2026-07-19 收口）。**
 
 - ✅ MVP 全链路已在实机验证过（Dock 实时显示 CPU 频率/CPU 温度/GPU 温度）。
-- ✅ 加固：管道单连接超时、刷新防重入、Host 无窗口化+文件日志（`%ProgramData%\SensorMonitor\host.log`）、
+- ✅ 加固：管道单连接超时、刷新防重入、Host 无窗口化+文件日志（`%ProgramData%\SysPulse\host.log`）、
   扩展防崩+数据过期提示、计划任务静默提权（`--install-task`）、band 懒启动、传感器浏览页。
 - ✅ 实机验证收口：CLI 部署（免 VS）、静默提权拉起/停止（`schtasks /Run\|/End` 均免提权）、无窗口
   Host + host.log、数据过期提示（假管道服务端测法，见 verification 计划 V4）、静默自动重连、
@@ -21,7 +21,7 @@
   ✓ 标当前、点选即换、`RaiseItemsChanged` 刷新）；编辑停靠栏 add-menu 的 band 显示类别图标
   （WrappedDockItem.Icon）；Provider 改每次新建 WrappedDockItem（对齐官方；"重复 band"实为
   开发期 `x-cmdpal://reload` 累加假象、非发布 bug，净启每 band 一份）。
-- ✅ A2（2026-07-19）：MSIX 打包链路验证——自签名 dev 身份（`CN=SensorMonitor Dev`）、x64 Release
+- ✅ A2（2026-07-19）：MSIX 打包链路验证——自签名 dev 身份（`CN=SysPulse Dev`）、x64 Release
   已签名 .msix 实装 + Dock 正常、x64+ARM64 bundle 生成；步骤见 `docs/references/msix-packaging.md`。
   **关键发现并修复**：Release 裁剪禁用反射式 System.Text.Json → 打包版曾全"Host 未运行"，
   已改 source-gen JSON 上下文（`Ipc/SensorJsonContext.cs`）解决。
@@ -31,8 +31,8 @@
   `Settings/SettingsManager.cs` 继承 `JsonSettingsManager` 自持久化（**宿主不自动存**扩展设置——须 `FilePath`+
   `LoadSettings`/`SaveSettings`，否则重启回落默认）；`TempDisplay` 纯转换套用到 dock band/选择页/浏览页三处。
   纯扩展侧、Host 零改动。实机验证持久化 OK。
-- ✅ R4（2026-07-20）：签名 **Inno 安装器**（`installer/`）一键装「自包含 Host→`%ProgramFiles%\SensorMonitor\Host\`
-  + 计划任务 + 完整扩展 MSIX 全机预置」，装时一次 UAC、运行期零 UAC、一处卸载全清；消除 `SENSORMONITOR_HOST_EXE` 依赖。
+- ✅ R4（2026-07-20）：签名 **Inno 安装器**（`installer/`）一键装「自包含 Host→`%ProgramFiles%\SysPulse\Host\`
+  + 计划任务 + 完整扩展 MSIX 全机预置」，装时一次 UAC、运行期零 UAC、一处卸载全清；消除 `SYSPULSE_HOST_EXE` 依赖。
   干净机实测：CmdPal 发现扩展 + 出读数（无 env var / 无预装 .NET）、卸载清任务。**MS Store 出局**（驱动+提权，spike 证伪）、
   sparse 出局（CmdPal 发现未证实）；扩展仅改 `ResolveHostPath` 一行。见 `docs/references/installer.md`。
   已知限制：CPU/主板温度需用户**另装 PawnIO 驱动**（不在包内）；R4b = WinGet/Release 提交 + 真证书 + 两项安装器健壮性硬化
@@ -43,7 +43,7 @@
 
 ## 一句话架构
 
-双进程：`SensorMonitor.Host`（提权，LibreHardwareMonitorLib 读传感器，命名管道供数据）+ `SensorMonitorExtension`（CmdPal MSIX 扩展，Dock 槽位控件共享 SnapshotCache 每 1s 轮询刷新，检测到 Host 未运行走计划任务静默拉起）。**为什么必须双进程**：见 `docs/architecture.md` D1。
+双进程：`SysPulse.Host`（提权，LibreHardwareMonitorLib 读传感器，命名管道供数据）+ `SysPulseExtension`（CmdPal MSIX 扩展，Dock 槽位控件共享 SnapshotCache 每 1s 轮询刷新，检测到 Host 未运行走计划任务静默拉起）。**为什么必须双进程**：见 `docs/architecture.md` D1。
 
 ## 文档地图（按需读，勿一次全读）
 
@@ -62,10 +62,10 @@
 3. Dock item 的 `Command.Id` 为空 → 被静默忽略。
 4. CPU/主板温度需要 **管理员 + PawnIO 驱动**（WinRing0 已被 Defender 封杀）；非提权进程只读得到 GPU。
 5. 提权管道服务端必须显式 `PipeSecurity` 放开 Authenticated Users，否则非提权扩展连不上。
-6. **Host 运行时锁死自己的 `bin/`**：重建/跑测试前先停 Host（管理员终端 `taskkill /f /im SensorMonitor.Host.exe`），
+6. **Host 运行时锁死自己的 `bin/`**：重建/跑测试前先停 Host（管理员终端 `taskkill /f /im SysPulse.Host.exe`），
    或用 `--artifacts-path` 输出到独立目录绕开（agent 会话无提权时的标准做法）。
    **扩展同理**：松散注册的扩展被 CmdPal 激活后进程常驻，锁死扩展 `bin/`——CLI 重建前先
-   `taskkill /f /im SensorMonitorExtension.exe`（无需提权；`scripts/setup.ps1` 阶段 4 已内置）。
+   `taskkill /f /im SysPulseExtension.exe`（无需提权；`scripts/setup.ps1` 阶段 4 已内置）。
 7. 自动拉起遵守 D7：自动路径只走计划任务静默通道，UAC 只允许出现在用户显式点击。
 8. **Dock band 属性更新必须变化保护**：CmdPal 宿主统一渲染所有扩展的 dock band，高频冗余属性
    变更事件会淹没宿主更新队列、**卡死其它扩展的合并 band**（实测每 1s 无条件重设 Title/Subtitle
@@ -76,11 +76,11 @@
 
 ```bash
 scripts\setup.cmd                 # 新机器一键引导（自提权，装工具链+构建+部署+计划任务）；-CheckOnly 只体检
-dotnet test tests/SensorMonitor.Host.Tests            # Host 侧全部单测
-dotnet run --project src/SensorMonitor.Host -- --dump  # 管理员终端：打印本机传感器 JSON
+dotnet test tests/SysPulse.Host.Tests            # Host 侧全部单测
+dotnet run --project src/SysPulse.Host -- --dump  # 管理员终端：打印本机传感器 JSON
 # 管理员终端一次性注册计划任务（此后扩展可静默拉起 Host，无 UAC）：
-#   src/SensorMonitor.Host/bin/.../SensorMonitor.Host.exe --install-task
-# 停 Host（管理员）：taskkill /f /im SensorMonitor.Host.exe
+#   src/SysPulse.Host/bin/.../SysPulse.Host.exe --install-task
+# 停 Host（管理员）：taskkill /f /im SysPulse.Host.exe
 ```
 
 扩展的构建可 CLI（`dotnet build -p:Platform=x64`），**部署**仍走 Visual Studio（Deploy → CmdPal 内 Reload）。

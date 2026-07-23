@@ -4,7 +4,7 @@
 
 **Goal:** 修复 MVP 复查发现的 4 类缺陷（管道可被挂死、后台循环静默死亡、扩展进程可被 Timer 异常带崩、Host 可见窗口/UAC 骚扰），并落地免 UAC 静默拉起与传感器浏览页。
 
-**Architecture:** 不改双进程 + 命名管道的既有架构（`docs/architecture.md` D1–D6）。新增两条决策：**D7 自动拉起绝不弹 UAC**（自动路径只走计划任务静默通道，UAC 只发生在用户显式点击）；**D8 Host 无窗口化 + 文件日志**（`%ProgramData%\SensorMonitor\host.log`）。
+**Architecture:** 不改双进程 + 命名管道的既有架构（`docs/architecture.md` D1–D6）。新增两条决策：**D7 自动拉起绝不弹 UAC**（自动路径只走计划任务静默通道，UAC 只发生在用户显式点击）；**D8 Host 无窗口化 + 文件日志**（`%ProgramData%\SysPulse\host.log`）。
 
 **Tech Stack:** 同 MVP。新依赖仅 Windows 自带 `schtasks`（计划任务注册/触发）。
 
@@ -30,9 +30,9 @@
 ### Task 1: 管道服务端加固（单连接超时 + 循环永不死亡）（修 F1/F2）
 
 **Files:**
-- Modify: `src/SensorMonitor.Host/Ipc/PipeJsonServer.cs`
-- Modify: `src/SensorMonitor.Host/Program.cs`（构造参数变化）
-- Test: `tests/SensorMonitor.Host.Tests/PipeJsonServerTests.cs`
+- Modify: `src/SysPulse.Host/Ipc/PipeJsonServer.cs`
+- Modify: `src/SysPulse.Host/Program.cs`（构造参数变化）
+- Test: `tests/SysPulse.Host.Tests/PipeJsonServerTests.cs`
 
 - [ ] **Step 1: 写失败测试（挂死客户端不阻塞下一个客户端）**
 
@@ -42,7 +42,7 @@
 [Fact]
 public async Task Wedged_Client_Does_Not_Block_Next_Client()
 {
-    var pipeName = $"SensorMonitor.Test.{Guid.NewGuid():N}";
+    var pipeName = $"SysPulse.Test.{Guid.NewGuid():N}";
     var snapshot = new SensorSnapshot(DateTimeOffset.UtcNow,
         [new SensorReading("/cpu/0/clock/1", "CPU", "Core #1", "Clock", 5200f, "MHz")]);
     using var server = new PipeJsonServer(pipeName, () => snapshot,
@@ -68,9 +68,9 @@ public async Task Wedged_Client_Does_Not_Block_Next_Client()
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `dotnet test tests/SensorMonitor.Host.Tests --filter Wedged_Client_Does_Not_Block_Next_Client`
+Run: `dotnet test tests/SysPulse.Host.Tests --filter Wedged_Client_Does_Not_Block_Next_Client`
 Expected: 编译失败（`PipeJsonServer` 尚无 `connectionTimeout` 参数）。
-注意（F8）：跑测试前先停掉运行中的 Host —— 管理员终端 `taskkill /f /im SensorMonitor.Host.exe`，否则 bin 被锁构建失败。
+注意（F8）：跑测试前先停掉运行中的 Host —— 管理员终端 `taskkill /f /im SysPulse.Host.exe`，否则 bin 被锁构建失败。
 
 - [ ] **Step 3: 实现 —— 拆出 ServeOneAsync、加单连接超时与兜底 catch**
 
@@ -81,9 +81,9 @@ using System.IO.Pipes;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text.Json;
-using SensorMonitor.Host.Model;
+using SysPulse.Host.Model;
 
-namespace SensorMonitor.Host.Ipc;
+namespace SysPulse.Host.Ipc;
 
 /// <summary>
 /// 极简单次问答管道服务：客户端写一行 "GET"，服务端回一行 JSON 快照后断开。
@@ -182,7 +182,7 @@ using var server = new PipeJsonServer(PipeName, () => Volatile.Read(ref cached),
 
 - [ ] **Step 4: 跑全部测试确认通过**
 
-Run: `dotnet test tests/SensorMonitor.Host.Tests`
+Run: `dotnet test tests/SysPulse.Host.Tests`
 Expected: 全绿（旧 10 个 + 新 1 个）。
 
 - [ ] **Step 5: Commit**
@@ -195,7 +195,7 @@ git commit -m "fix(host): per-connection timeout and unkillable accept loop (F1,
 ### Task 2: Host 刷新循环防重入（修 F6）
 
 **Files:**
-- Modify: `src/SensorMonitor.Host/Program.cs`
+- Modify: `src/SysPulse.Host/Program.cs`
 
 - [ ] **Step 1: 周期 Timer 改 one-shot 重排**
 
@@ -231,9 +231,9 @@ git commit -m "fix(host): one-shot reschedule prevents refresh reentrancy (F6)"
 ### Task 3: Host 无窗口化 + 文件日志（修 F4，决策 D8）
 
 **Files:**
-- Modify: `src/SensorMonitor.Host/SensorMonitor.Host.csproj`（`OutputType` → `WinExe`）
-- Create: `src/SensorMonitor.Host/HostLog.cs`
-- Modify: `src/SensorMonitor.Host/Program.cs`
+- Modify: `src/SysPulse.Host/SysPulse.Host.csproj`（`OutputType` → `WinExe`）
+- Create: `src/SysPulse.Host/HostLog.cs`
+- Modify: `src/SysPulse.Host/Program.cs`
 
 - [ ] **Step 1: csproj 切 WinExe**
 
@@ -243,20 +243,20 @@ git commit -m "fix(host): one-shot reschedule prevents refresh reentrancy (F6)"
 
 - [ ] **Step 2: 文件日志**
 
-`src/SensorMonitor.Host/HostLog.cs`:
+`src/SysPulse.Host/HostLog.cs`:
 
 ```csharp
-namespace SensorMonitor.Host;
+namespace SysPulse.Host;
 
 /// <summary>
-/// WinExe 无控制台（D8），错误全部落 %ProgramData%\SensorMonitor\host.log。
+/// WinExe 无控制台（D8），错误全部落 %ProgramData%\SysPulse\host.log。
 /// 超 1MB 直接重开新文件 —— 这是错误日志不是运行日志，正常运行几乎不增长。
 /// </summary>
 internal static class HostLog
 {
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-        "SensorMonitor", "host.log");
+        "SysPulse", "host.log");
     private static readonly object Gate = new();
 
     public static void Write(string message)
@@ -304,7 +304,7 @@ if (args is ["--dump"])
 
 - [ ] **Step 4: 手动验证**
 
-重新构建，双击 exe → UAC → **无窗口**；任务管理器可见进程；普通终端连管道取到 JSON；`%ProgramData%\SensorMonitor\host.log` 出现"Host 启动"。管理员终端 `SensorMonitor.Host.exe --dump` 仍在终端打印 JSON。
+重新构建，双击 exe → UAC → **无窗口**；任务管理器可见进程；普通终端连管道取到 JSON；`%ProgramData%\SysPulse\host.log` 出现"Host 启动"。管理员终端 `SysPulse.Host.exe --dump` 仍在终端打印 JSON。
 
 - [ ] **Step 5: Commit**
 
@@ -316,7 +316,7 @@ git commit -m "fix(host): windowless WinExe with file logging (F4, D8)"
 ### Task 4: 扩展防崩 + 数据过期提示（修 F3/F7）
 
 **Files:**
-- Modify: `src/SensorMonitorExtension/SensorMonitorExtension/Dock/SensorDockBand.cs`
+- Modify: `src/SysPulseExtension/SysPulseExtension/Dock/SensorDockBand.cs`
 
 - [ ] **Step 1: Refresh 包裹兜底 + Sensors null 容忍 + 过期标注**
 
@@ -376,24 +376,24 @@ git commit -m "fix(ext): crash-proof refresh and stale-data indicator (F3,F7)"
 ### Task 5: 计划任务静默提权通道（修 F5 前半，决策 D7；原路线 R3）
 
 **Files:**
-- Create: `src/SensorMonitor.Host/TaskInstaller.cs`
-- Modify: `src/SensorMonitor.Host/Program.cs`
-- Modify: `src/SensorMonitorExtension/SensorMonitorExtension/Commands/LaunchHostCommand.cs`
+- Create: `src/SysPulse.Host/TaskInstaller.cs`
+- Modify: `src/SysPulse.Host/Program.cs`
+- Modify: `src/SysPulseExtension/SysPulseExtension/Commands/LaunchHostCommand.cs`
 
 原理：以最高权限注册计划任务需要提权一次（Host 本来就带 UAC），但**触发**自己名下 `/RL HIGHEST` 的任务不需要提权 —— 这是自有软件免重复 UAC 的标准做法。
 
 - [ ] **Step 1: Host 侧注册/注销命令**
 
-`src/SensorMonitor.Host/TaskInstaller.cs`:
+`src/SysPulse.Host/TaskInstaller.cs`:
 
 ```csharp
 using System.Diagnostics;
 
-namespace SensorMonitor.Host;
+namespace SysPulse.Host;
 
 internal static class TaskInstaller
 {
-    public const string TaskName = "SensorMonitor.Host";
+    public const string TaskName = "SysPulse.Host";
 
     /// <summary>注册登录自启 + 可按需触发的最高权限任务（本进程已提权，schtasks 直接成功）。</summary>
     public static int Install()
@@ -447,7 +447,7 @@ private static bool TryRunScheduledTask()
     try
     {
         using var p = Process.Start(new ProcessStartInfo(
-            "schtasks", "/Run /TN SensorMonitor.Host")
+            "schtasks", "/Run /TN SysPulse.Host")
         { UseShellExecute = false, CreateNoWindow = true });
         if (p is null) return false;
         return p.WaitForExit(3000) && p.ExitCode == 0;  // 任务不存在 → 非 0 → 走回退
@@ -458,7 +458,7 @@ private static bool TryRunScheduledTask()
 
 - [ ] **Step 3: 验证**
 
-管理员终端 `SensorMonitor.Host.exe --install-task`（exit 0，`schtasks /Query /TN SensorMonitor.Host` 可见）→ 杀掉 Host → 普通终端 `schtasks /Run /TN SensorMonitor.Host` → **无 UAC**、Host 进程出现。再验证扩展：杀 Host → Dock band 点击 → 无 UAC 恢复读数。注销一次再点击 → 弹 UAC（回退路径正常）→ 重新 `--install-task`。
+管理员终端 `SysPulse.Host.exe --install-task`（exit 0，`schtasks /Query /TN SysPulse.Host` 可见）→ 杀掉 Host → 普通终端 `schtasks /Run /TN SysPulse.Host` → **无 UAC**、Host 进程出现。再验证扩展：杀 Host → Dock band 点击 → 无 UAC 恢复读数。注销一次再点击 → 弹 UAC（回退路径正常）→ 重新 `--install-task`。
 
 - [ ] **Step 4: Commit**
 
@@ -470,9 +470,9 @@ git commit -m "feat: scheduled-task silent elevation channel (R3, D7)"
 ### Task 6: 自动拉起策略收紧 + band 懒启动（修 F5 后半）
 
 **Files:**
-- Modify: `src/SensorMonitorExtension/SensorMonitorExtension/Dock/SensorDockBand.cs`
-- Modify: `src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtensionCommandsProvider.cs`
-- Modify: `src/SensorMonitorExtension/SensorMonitorExtension/Commands/LaunchHostCommand.cs`
+- Modify: `src/SysPulseExtension/SysPulseExtension/Dock/SensorDockBand.cs`
+- Modify: `src/SysPulseExtension/SysPulseExtension/SysPulseExtensionCommandsProvider.cs`
+- Modify: `src/SysPulseExtension/SysPulseExtension/Commands/LaunchHostCommand.cs`
 
 - [ ] **Step 1: 自动路径只走静默通道**
 
@@ -532,7 +532,7 @@ git commit -m "feat(ext): silent-only auto-launch with throttle, lazy band polli
 ### Task 7: 传感器浏览页替换模板 TODO 页（原路线 R1 + R5 提示）
 
 **Files:**
-- Modify: `src/SensorMonitorExtension/SensorMonitorExtension/Pages/SensorMonitorExtensionPage.cs`
+- Modify: `src/SysPulseExtension/SysPulseExtension/Pages/SysPulseExtensionPage.cs`
 
 - [ ] **Step 1: 实现页面**
 
@@ -544,16 +544,16 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
-using SensorMonitorExtension.Ipc;
+using SysPulseExtension.Ipc;
 
-namespace SensorMonitorExtension;
+namespace SysPulseExtension;
 
-internal sealed partial class SensorMonitorExtensionPage : ListPage
+internal sealed partial class SysPulseExtensionPage : ListPage
 {
-    public SensorMonitorExtensionPage()
+    public SysPulseExtensionPage()
     {
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
-        Title = "Sensor Monitor";
+        Title = "SysPulse";
         Name = "Open";
     }
 
@@ -594,7 +594,7 @@ internal sealed partial class SensorMonitorExtensionPage : ListPage
 
 - [ ] **Step 2: 部署验证**
 
-Deploy + Reload → 面板打开 `Sensor Monitor`：按硬件分组有序列出全部传感器（本机装 PawnIO 后 135 项）；杀掉 Host 重开页面 → 只剩"Host 未运行"项，回车可拉起。
+Deploy + Reload → 面板打开 `SysPulse`：按硬件分组有序列出全部传感器（本机装 PawnIO 后 135 项）；杀掉 Host 重开页面 → 只剩"Host 未运行"项，回车可拉起。
 
 - [ ] **Step 3: Commit**
 
@@ -607,14 +607,14 @@ git commit -m "feat(ext): sensor browser page with PawnIO guidance (R1,R5)"
 
 **Files:**
 - Delete: `docs/staged-extension/`（已并入 src，双份必漂移）
-- Modify: `CLAUDE.md`（状态改"MVP+加固完成"；常用命令补 `taskkill /f /im SensorMonitor.Host.exe`（管理员）与 `--install-task`；高频坑补"Host 运行时锁 bin，重建前先停"）
+- Modify: `CLAUDE.md`（状态改"MVP+加固完成"；常用命令补 `taskkill /f /im SysPulse.Host.exe`（管理员）与 `--install-task`；高频坑补"Host 运行时锁 bin，重建前先停"）
 - Modify: `docs/architecture.md`（追加 D7 静默拉起、D8 无窗口+日志，含依据）
-- Modify: `docs/plans/2026-07-18-sensormonitor-mvp.md`（顶部加一行"已完成，后续见 post-mvp-hardening 计划"）
+- Modify: `docs/plans/2026-07-18-syspulse-mvp.md`（顶部加一行"已完成，后续见 post-mvp-hardening 计划"）
 
 - [ ] **Step 1: 按上述清单逐项修改**
 - [ ] **Step 2: 全量回归**
 
-Run: `dotnet test tests/SensorMonitor.Host.Tests`（记得先 taskkill Host）
+Run: `dotnet test tests/SysPulse.Host.Tests`（记得先 taskkill Host）
 Expected: 全绿。再手动过一遍：登录 → Host 自启（计划任务）→ Dock 实时读数 → 无任何 UAC。
 
 - [ ] **Step 3: Commit**
@@ -631,7 +631,7 @@ git commit -m "chore: remove staged copies, document post-MVP state (F8,F10)"
 | # | 事项 | 备注 |
 |---|------|------|
 | R2 | 传感器选择 + 刷新间隔设置 | JSON 配置 + CmdPal 设置页；等 Dock 用稳了再定交互 |
-| R4 | Host 打进 MSIX 包随扩展分发 | 消除 `SENSORMONITOR_HOST_EXE` 环境变量依赖 |
+| R4 | Host 打进 MSIX 包随扩展分发 | 消除 `SYSPULSE_HOST_EXE` 环境变量依赖 |
 | R6 | 多 band（每指标一按钮）、温度阈值变色 | `WrappedDockItem` 多 ListItem 形态 |
 | R7 | Host 空闲自退出（N 分钟无管道请求）| 有计划任务静默重启后才有意义，避免常驻提权进程 |
 | R8 | 管道抢注防护（校验服务端进程签名/路径） | F9 升级时再做；当前数据只读非敏感，接受风险 |

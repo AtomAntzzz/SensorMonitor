@@ -20,7 +20,7 @@
   正确测法：停真 Host 后起**假管道服务端**喂时间戳落后 60s 的快照（协议公开，F9 记录可抢注；需自愈式
   重试 + `schtasks /End` 压制静默重拉的复活竞态）。
 - **V5 静默自动重连**：杀 Host → band 30s 内无 UAC 恢复（V4 测试期静默重拉两次复活真 Host，自愈强度额外背书）。
-- **V6 浏览页**：搜 Sensor Monitor → 按硬件分组列全部传感器；杀 Host 重开 → 仅"Host 未运行"项。
+- **V6 浏览页**：搜 SysPulse → 按硬件分组列全部传感器；杀 Host 重开 → 仅"Host 未运行"项。
 - **V7 登录全链路**：注销重登 → 计划任务自启 Host → Dock 实时读数 → 全程无 UAC。
 - **V8 收口**：CLAUDE.md 状态更新。
 
@@ -41,14 +41,14 @@
 
 ### A2 — MSIX 打包链路验证 ✅
 
-- 自签名 dev 身份（`CN=SensorMonitor Dev`）、x64 Release 已签名 .msix 实装 + Dock 正常、x64/ARM64 bundle 生成。
+- 自签名 dev 身份（`CN=SysPulse Dev`）、x64 Release 已签名 .msix 实装 + Dock 正常、x64/ARM64 bundle 生成。
 - **关键发现并修复**：Release 裁剪禁用反射式 System.Text.Json → 打包版曾全"Host 未运行"，
   改 source-gen JSON 上下文（`Ipc/SensorJsonContext.cs`）解决——这坑不提前打包就会潜伏到 R4/商店才爆。
 - 复现步骤 `docs/references/msix-packaging.md`；实现 `docs/superpowers/plans/2026-07-19-a2-msix-packaging.md`。
 
 ### A3 — 搜索进入次级列表 ✅
 
-- 本体既有浏览页已满足（搜 SensorMonitor → 回车列全部传感器）；band 单击选择页（见 A1 增强）
+- 本体既有浏览页已满足（搜 SysPulse → 回车列全部传感器）；band 单击选择页（见 A1 增强）
   进一步补齐"点进去换显示"的交互。
 
 ---
@@ -61,7 +61,7 @@
 |---|------|----------------|
 | ✅ R2 | 设置页（刷新间隔 1/2/5s + 温度单位 °C/°F，全局项） | **已完成（2026-07-20）**：走 CmdPal 内置 Settings，`SettingsManager` 继承 `JsonSettingsManager` 自持久化（宿主不自动存，坑已记录）。范围经 brainstorming 收敛——传感器选择仍归 A1 的 `slots.json`，槽位显隐用原生 pin/unpin，均按 YAGNI 未纳入。见 `docs/superpowers/plans/2026-07-19-r2-settings-page.md` |
 | ~~R6~~ | ~~温度阈值变色~~（**spike 证伪，2026-07-19 搁置**） | Dock band **不渲染 Tag/颜色**（红底"热"Tag 实测在 dock 完全不显；SDK 0.9.260303001）。若要做只能降级"超阈值换红图标字形/标题加⚠"，价值有限，暂不做 |
-| ✅ R4 | 分发安装器（签名 Inno：自包含 Host + 计划任务 + 完整扩展 MSIX 全机预置） | **已完成（2026-07-20）**：一键装、装时一次 UAC、运行期零 UAC、一处卸载全清；消除 `SENSORMONITOR_HOST_EXE`。方案经 brainstorm 收敛——**非 MS Store**（驱动+提权 spike 证伪）、非 sparse（CmdPal 发现未证实），扩展仍完整 MSIX。干净机实测通过（发现+读数+卸载清任务；CPU/主板温度仍需用户另装 PawnIO）。见 `docs/superpowers/plans/2026-07-20-r4-installer-distribution.md` + `docs/references/installer.md`。**R4b**（WinGet/Release 提交 + 真证书 + 安装器健壮性硬化）后续 |
+| ✅ R4 | 分发安装器（签名 Inno：自包含 Host + 计划任务 + 完整扩展 MSIX 全机预置） | **已完成（2026-07-20）**：一键装、装时一次 UAC、运行期零 UAC、一处卸载全清；消除 `SYSPULSE_HOST_EXE`。方案经 brainstorm 收敛——**非 MS Store**（驱动+提权 spike 证伪）、非 sparse（CmdPal 发现未证实），扩展仍完整 MSIX。干净机实测通过（发现+读数+卸载清任务；CPU/主板温度仍需用户另装 PawnIO）。见 `docs/superpowers/plans/2026-07-20-r4-installer-distribution.md` + `docs/references/installer.md`。**R4b**（WinGet/Release 提交 + 真证书 + 安装器健壮性硬化）后续 |
 | ✅ R7 | Host 空闲自退出（5min 无管道请求自退，静默通道会拉回） | **已完成（2026-07-19）**：`PipeJsonServer.LastRequestUtc` + Program.cs 空闲 Timer；见 `docs/superpowers/plans/2026-07-19-r7-host-idle-exit.md` |
 | R8 | 管道抢注防护（校验服务端签名/路径） | 数据用途升级（如接入自动化决策）时；当前只读非敏感，维持接受风险 |
 
@@ -85,7 +85,7 @@
   完全正确，系 CmdPal 宿主**热重载缓存了旧的空设置页**所致，属宿主侧、我方无干净 hook 可控，且不影响真实分发。
   记此以免重复排查。
 - **PawnIO 后装需重启 Host 才生效** — 2026-07-22 发现。Host 启动时 init 一次 `LibreHardwareMonitorLib`（枚举硬件/驱动），
-  之后**再装 PawnIO 无效**，直到 Host 重启才带上驱动重新枚举。用户实测 workaround：手动杀掉后台 `SensorMonitor.Host.exe`
+  之后**再装 PawnIO 无效**，直到 Host 重启才带上驱动重新枚举。用户实测 workaround：手动杀掉后台 `SysPulse.Host.exe`
   → 计划任务静默重拉 → 重新 init 即读到数据。考虑（择一/组合）：① 文档提示"先装 PawnIO 再首启，或后装后重启 Host"；
   ② Host 侧检测"关键 sensor 长期读 0/缺失"时周期性重建 `Computer`；③ 安装器/PawnIO 安装后触发一次 `schtasks /End`。
   优先级低，多数用户装一次驱动即稳定。
@@ -104,24 +104,16 @@
   （把"缺驱动"误说成"传感器未检测到"），退回已修复的歧义。按要求改为 **"无此传感器"**（直白且保留两态语义：
   驱动有数据但该类确无 = 无此传感器 ≠ 需 PawnIO 驱动）。改了 `SlotCategories.cs` 3 处 `MissingHint` (cpuclock/cputemp/boardtemp)
   + `SlotCategory.cs` 记录注释；GPU 类两态原已同字"无 GPU 温度传感器"，未动。
-- [ ] **项目名「SensorMonitor」贴切性评估** — 用户确认目标为**对外发布**，需改更独特的名避免撞名。以下评估：
-
-  **现状**："SensorMonitor" 描述强、一看就懂，但极通用——GitHub/Windows Store 大量同名项目，搜索与辨识度差。
-  **改名成本**：身份锚点（MSIX Identity、管道名、计划任务、ProgramData 路径、命名空间、GitHub 仓库名）须联动改，
-  且老用户升级时管道/任务/目录路径变 → 需迁移逻辑。改得越晚装机基数越大成本越高，**所以发布前改是最佳时机**。
-
-  **候选（按 搜索友好 × 独特 × 易记 × 仍传达到意 排序）**：
-
-  | # | 候选 | 含义 | 优势 | 劣势 |
-  |---|------|------|------|------|
-  | **1** | **SysPulse** | 系统脉搏 | 短(8字)、专业、搜索无撞名 | 有医疗 App 同名但硬件领域无冲突 |
-  | **2** | **DockVitals** | Dock + 硬件体征 | 直白无需解释、说清在哪+做什么 | 略平淡、不够"品牌感" |
-  | **3** | **LiveGauge** | 实时仪表盘 | 传达到实时读数本质、有辨识度 | 英文生僻词、中文推广需辅助说明 |
-  | **4** | **PinSense** | Pin(钉在Dock) + Sense(感知) | 双关有趣、记忆点强 | 偏抽象、需上下文才能理解 |
-
-  **我的推荐**：① **SysPulse**（对外发布首选——短/专业/独特）> ② DockVitals（安全保守——怕撞名就撞不到但也平平）。
-  也可以你给一个偏好的方向（中文寓意？简短？幽默？）我再窄化候选。
-  **需你拍板**这个再动（涉及仓库改名 + 全仓字符串联动）。
+- [x] **项目改名 SensorMonitor → SysPulse** — 已全仓执行（2026-07-23）：用户选定 **SysPulse**。全仓联动改名：
+  ① GitHub 仓库 `AtomAntzzz/SensorMonitor` → `AtomAntzzz/SysPulse`（API rename，旧 URL 301 重定向）；
+  ② 全部目录/文件名（`src/SysPulse.Host/`、`src/SysPulseExtension/SysPulseExtension/`、`tests/SysPulse.Host.Tests/`、
+  `SysPulse.sln`、`SysPulse.iss`、`.csproj`/`.cs` 等 10+ 文件）；
+  ③ 全仓字符串替换（`SensorMonitor`→`SysPulse`、`SENSORMONITOR`→`SYSPULSE`、CmdPal 命令 ID `sensormonitor.*`→`syspulse.*`，
+  共 ~65 文件 ~904+ 处）；
+  ④ 身份锚点：MSIX `Identity Name="SysPulseExtension"`、管道 `SysPulse.Host.v1`、计划任务 `SysPulse.Host`、
+  `%ProgramData%\SysPulse\`、命名空间 `SysPulse.*`；
+  ⑤ 远程 URL 已更新为 `https://github.com/AtomAntzzz/SysPulse.git`。
+  ⚠ MSIX Identity 变更意味着旧 `SensorMonitorExtension` 包不会自动升级——安装器需在 `[Run]` 中先卸载旧包。
 
 ### 能力扩展
 
@@ -132,18 +124,18 @@
 ### 打包与作者信息
 
 - [x] **作者名改为 AtomAntzzz** — 已改（2026-07-23）：MSIX `Package.appxmanifest` 的 `PublisherDisplayName`
-  与 Inno `SensorMonitor.iss` 的 `AppPublisher` 均 `A Lone Developer`→`AtomAntzzz`。**未动** `Identity Publisher="CN=SensorMonitor Dev"`
+  与 Inno `SysPulse.iss` 的 `AppPublisher` 均 `A Lone Developer`→`AtomAntzzz`。**未动** `Identity Publisher="CN=SysPulse Dev"`
   ——那是签名证书 subject，须与证书一致，非作者展示名。
 - [x] **打包图标资产清单 + 占位图** — 已产出（2026-07-23）：`docs/references/icon-assets.md` 清单。**占位图已生成**
   （暗底圆角方 + 青色脉冲波形线，Pillow 脚本化导出）：母版 `assets/icons/master-1024.png`（1024² 透明 PNG）、
-  MSIX `Assets/` 各 PNG（替换 VS 模板占位）、多尺寸 `.ico`（16–256，放 `installer/SensorMonitor.ico` +
-  `src/SensorMonitor.Host/SensorMonitor.Host.ico`）。**Host csproj 已加 `<ApplicationIcon>`**、
+  MSIX `Assets/` 各 PNG（替换 VS 模板占位）、多尺寸 `.ico`（16–256，放 `installer/SysPulse.ico` +
+  `src/SysPulse.Host/SysPulse.Host.ico`）。**Host csproj 已加 `<ApplicationIcon>`**、
   **Inno `.iss` 已加 `SetupIconFile`** —— 下次构建安装器即生效。后续有正式设计直接换母版脚本重导即可。
 
 ### R4b 与驱动自动化
 
 - [ ] **完成 R4b** — WinGet/Release 提交 + 真证书 + 安装器健壮性硬化（承接 R4 收尾项）。
-- [ ] **本体安装后自动装 PawnIO** — 评估安装器在装 SensorMonitor 时**顺带静默安装 PawnIO** 的可行性
+- [ ] **本体安装后自动装 PawnIO** — 评估安装器在装 SysPulse 时**顺带静默安装 PawnIO** 的可行性
   （许可/静默参数/UAC 次数/失败降级），与上文「PawnIO 后装需重启 Host」联动考虑。
 
 ### GitHub / 开源发布

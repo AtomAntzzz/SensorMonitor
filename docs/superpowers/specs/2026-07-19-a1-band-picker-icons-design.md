@@ -21,7 +21,7 @@
 - `SensorSlotBand`（`Dock/SensorSlotBand.cs`）：主命令现为 `NoOpCommand`（A1 Task 1 冒烟结论：主命令在右键菜单置顶，故单击=无操作）；`MoreCommands = [上一个, 下一个, 启动 Host]`；构造时 `SnapshotCache.Updated += Refresh` 且不退订（进程生命周期）。
 - `SlotCategory`（`Dock/SlotCategory.cs`）：`Id/DisplayName/CycleNoun/IconGlyph/EmptyHint/GetCandidates`。`SlotCandidate`：`Key/Label/Value/Unit/IsDefault`。
 - `SlotLogic.Resolve/Cycle`、`SlotStore.Get/Set`、`SnapshotCache.Current/Updated` 均可复用。
-- A3 浏览页（`Pages/SensorMonitorExtensionPage.cs`）是 `ListPage`，每传感器一个 `ListItem(NoOpCommand)`——picker 页可仿其结构。
+- A3 浏览页（`Pages/SysPulseExtensionPage.cs`）是 `ListPage`，每传感器一个 `ListItem(NoOpCommand)`——picker 页可仿其结构。
 - CmdPal 中命令若为 `IPage`（ListPage），点击即导航到该页；页内项命令返回 `CommandResult.GoBack()` 可退回。
 
 ## 设计
@@ -36,7 +36,7 @@
   - 否则每候选一个 `ListItem`，命令 = `SelectSensorCommand(band, key)`；`Title = $"{c.Label} {c.Value:F0}{c.Unit}"`；当前选中项（`c.Key == band.CurrentKey`）`Subtitle = "✓ 当前"`，其余 `Subtitle = ""`。
 
 **新增 `SelectSensorCommand`**（`InvokableCommand`，可与 picker 同文件或 band 文件）：
-- 构造持 band + key；`Name = "选为当前"`；`Id = $"com.sensormonitor.select.{key}"`（防坑 #3 空 Id）。
+- 构造持 band + key；`Name = "选为当前"`；`Id = $"com.syspulse.select.{key}"`（防坑 #3 空 Id）。
 - `Invoke()`：`band.SetSelection(key)` → `return CommandResult.GoBack();`（选完退回 dock/上一页）。
 
 **改 `SensorSlotBand`**：
@@ -47,7 +47,7 @@
 
 ### 需求 2 — add-menu band 图标
 
-**改 `SensorMonitorExtensionCommandsProvider`**：WrappedDockItem 构造后设 `Icon = new IconInfo(c.IconGlyph)`（与 band 主图标同字形）。随 B1 的 provider 改造一并落地。
+**改 `SysPulseExtensionCommandsProvider`**：WrappedDockItem 构造后设 `Icon = new IconInfo(c.IconGlyph)`（与 band 主图标同字形）。随 B1 的 provider 改造一并落地。
 
 ### Bug B1 — 取消固定后重加消失
 
@@ -59,7 +59,7 @@
   ```
   SnapshotCache.EnsureStarted();
   return _bands.Select(b => (ICommandItem)new WrappedDockItem(
-      [b], $"com.sensormonitor.{b.CategoryId}", b.DisplayName) { Icon = new IconInfo(b.IconGlyph) }).ToArray();
+      [b], $"com.syspulse.{b.CategoryId}", b.DisplayName) { Icon = new IconInfo(b.IconGlyph) }).ToArray();
   ```
   （band 暴露 `CategoryId/DisplayName/IconGlyph` 或直接持 `SlotCategory` 供包装读取。）
 

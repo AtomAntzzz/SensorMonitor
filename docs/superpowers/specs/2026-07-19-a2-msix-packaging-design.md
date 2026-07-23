@@ -14,7 +14,7 @@
    - x64：构建→签名→**实装**→Dock 正常→卸载干净→恢复松散开发注册（"能装能用"硬验证）。
    - ARM64：仅验证**能构建出 .msix**（本机 x64 无法实装 ARM64，只证跨架构编译通过）。
    - bundle：makeappx 合出 `.msixbundle` 并签名成功（商店提交形态，只验证产物生成，不提交）。
-2. **签名 = 自签名 dev 身份，永久采用**：manifest/csproj 身份永久改为 `CN=SensorMonitor Dev`（真实项目不该留 `CN=Microsoft` 占位）；商店提交时再换 Partner Center 身份。
+2. **签名 = 自签名 dev 身份，永久采用**：manifest/csproj 身份永久改为 `CN=SysPulse Dev`（真实项目不该留 `CN=Microsoft` 占位）；商店提交时再换 Partner Center 身份。
 3. **构建配置 = Release（带裁剪）**：贴近商店真实产物；A2 的核心价值之一即提前暴露裁剪问题（至今验证的松散部署都是 Debug 未裁剪）。
 4. **Host 不打进包**：Host 随包分发是 R4。A2 测试期依赖**已注册的计划任务**（指向仓库构建的 Host exe）拉起 Host，故"Dock 正常"可达成而无需捆绑 Host。
 5. **接受的副作用**：包家族名随身份变更 → A1 的 `slots.json` 持久化重置一次（用户轮换重选即可）。
@@ -22,18 +22,18 @@
 ## 前提事实（已核实，勿重查）
 
 - csproj 已具 MSIX 工具链：`EnableMsixTooling=true`、`Microsoft.Windows.SDK.BuildTools.MSIX` 包、`Properties/PublishProfiles/win-x64.pubxml`+`win-arm64.pubxml`。
-- 当前 manifest：`Name="SensorMonitorExtension"`、`Publisher="CN=Microsoft Corporation, ..."`（占位）、`Version="0.0.1.0"`、含 `runFullTrust`+`internetClient` capability、COM server CLSID `7d829c17-1969-490c-bf62-141c9b61cfd3`。
+- 当前 manifest：`Name="SysPulseExtension"`、`Publisher="CN=Microsoft Corporation, ..."`（占位）、`Version="0.0.1.0"`、含 `runFullTrust`+`internetClient` capability、COM server CLSID `7d829c17-1969-490c-bf62-141c9b61cfd3`。
 - csproj Release 段：`PublishTrimmed=true`、`IsAotCompatible=true`、`ILLinkTreatWarningsAsErrors=false`（Release）。Debug 段 `PublishTrimmed=false`。
 - 本机 **PATH 无 signtool**；signtool/makeappx 需从 SDK BuildTools 包或 Windows Kits 定位。
 - 打包命令模板见 `.github/skills/publish-extension/references/store-publishing.md`（Step 3/4）。
-- 计划任务 `SensorMonitor.Host` 已注册（指向仓库 `bin/Debug/net8.0/SensorMonitor.Host.exe`），静默通道可用。
+- 计划任务 `SysPulse.Host` 已注册（指向仓库 `bin/Debug/net8.0/SysPulse.Host.exe`），静默通道可用。
 
 ## 执行阶段
 
 | # | 阶段 | 动作 | 成功判据 |
 |---|------|------|----------|
-| 1 | 身份改造 | manifest Publisher→`CN=SensorMonitor Dev`；csproj 补 `AppxPackageIdentityName=SensorMonitorExtension`/`AppxPackagePublisher=CN=SensorMonitor Dev`/`AppxPackageVersion=0.0.1.0` | 松散注册（Debug）仍能装、Dock 正常（改身份未破坏现有链路） |
-| 2 | 证书 | `New-SelfSignedCertificate -Type CodeSigning -Subject "CN=SensorMonitor Dev"`（CurrentUser\My）→ 导出 `.cer`/记录 thumbprint → 导入 `LocalMachine\TrustedPeople` | `Get-ChildItem Cert:\CurrentUser\My` 见证书；thumbprint 记录备用 |
+| 1 | 身份改造 | manifest Publisher→`CN=SysPulse Dev`；csproj 补 `AppxPackageIdentityName=SysPulseExtension`/`AppxPackagePublisher=CN=SysPulse Dev`/`AppxPackageVersion=0.0.1.0` | 松散注册（Debug）仍能装、Dock 正常（改身份未破坏现有链路） |
+| 2 | 证书 | `New-SelfSignedCertificate -Type CodeSigning -Subject "CN=SysPulse Dev"`（CurrentUser\My）→ 导出 `.cer`/记录 thumbprint → 导入 `LocalMachine\TrustedPeople` | `Get-ChildItem Cert:\CurrentUser\My` 见证书；thumbprint 记录备用 |
 | 3 | 构建 x64 MSIX | `dotnet build -c Release -p:GenerateAppxPackageOnBuild=true -p:Platform=x64 -p:AppxPackageDir="AppPackages\x64\" -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=<thumb>` | `AppPackages\x64\` 下生成**已签名** x64 `.msix`；Release 裁剪构建 0 错误 |
 | 4 | 构建 ARM64 MSIX | 同上 `-p:Platform=ARM64 -p:AppxPackageDir="AppPackages\ARM64\"` | `AppPackages\ARM64\` 下生成 ARM64 `.msix`（仅证能构建，不实装） |
 | 5 | 合 bundle | `bundle_mapping.txt` 映射两架构 → `makeappx bundle` → signtool 签名 bundle | 生成已签名 `.msixbundle` |

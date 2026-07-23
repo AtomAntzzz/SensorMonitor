@@ -1,6 +1,6 @@
 # 新机器一键引导脚本 Design
 
-**Goal:** 在全新 Windows 机器上，用一个自提权、幂等的脚本把 SensorMonitor 的开发环境从零拉起到"能构建、能跑测试、扩展已部署、Host 计划任务已注册"，把原本散落在多篇文档里的手动步骤收敛成一次运行。
+**Goal:** 在全新 Windows 机器上，用一个自提权、幂等的脚本把 SysPulse 的开发环境从零拉起到"能构建、能跑测试、扩展已部署、Host 计划任务已注册"，把原本散落在多篇文档里的手动步骤收敛成一次运行。
 
 **决策前提（已与用户确认）:**
 - 脚本范围：**全套安装**（含系统级工具链，不只是项目引导）。
@@ -45,15 +45,15 @@
 | 0 | 预检 | winget 是否存在（`Get-Command winget`）；是否 admin | winget 缺失 → 报错退出并指向 App Installer；非 admin 且非 `-CheckOnly` → 自提权重启 | — |
 | 1 | 工具链 | **功能性探测**（.NET 用 `dotnet --list-runtimes/--list-sdks`；PowerToys 查 exe 落点；PawnIO 查服务/目录/注册表三路信号）——winget-ID 检测会漏报非 winget 渠道安装，仅作安装通道 | `winget install -e --id` 装 `Microsoft.DotNet.Runtime.8`、`Microsoft.DotNet.SDK.9`、`Microsoft.PowerToys`、`namazso.PawnIO`（`--silent --accept-package-agreements --accept-source-agreements`）。.NET 8 只需运行时：构建统一由 SDK 9 承担（net8.0 targeting pack 走 NuGet），运行需 `Microsoft.NETCore.App 8.0`（major 不 roll-forward，装 SDK 9 不覆盖） | ✅ |
 | 2 | 开发者模式 | 读 `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock\AllowDevelopmentWithoutDevLicense` | 置 `1`（松散 MSIX 注册前提） | ✅ |
-| 3 | Host 构建+测试 | — | `taskkill /f /im SensorMonitor.Host.exe`（忽略未运行，避坑 #6 锁 bin）→ `dotnet restore SensorMonitor.sln` → `dotnet build` → `dotnet test tests/SensorMonitor.Host.Tests`（期望 11 绿） | — |
-| 4 | 扩展部署 | 目标 Appx 包是否已注册（`Get-AppxPackage`） | `dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64` → 定位输出 `AppxManifest.xml` → `Add-AppxPackage -Register <manifest>`。**尽力而为**：失败则打印原始错误 + 手动兜底提示，不阻断阶段 5/6 | — |
-| 5 | 计划任务 | `schtasks /Query /TN SensorMonitor.Host` | 跑阶段 3 构建出的 `SensorMonitor.Host.exe --install-task`（D7 静默提权通道） | ✅ |
+| 3 | Host 构建+测试 | — | `taskkill /f /im SysPulse.Host.exe`（忽略未运行，避坑 #6 锁 bin）→ `dotnet restore SysPulse.sln` → `dotnet build` → `dotnet test tests/SysPulse.Host.Tests`（期望 11 绿） | — |
+| 4 | 扩展部署 | 目标 Appx 包是否已注册（`Get-AppxPackage`） | `dotnet build src/SysPulseExtension/SysPulseExtension/SysPulseExtension.csproj -c Debug -p:Platform=x64` → 定位输出 `AppxManifest.xml` → `Add-AppxPackage -Register <manifest>`。**尽力而为**：失败则打印原始错误 + 手动兜底提示，不阻断阶段 5/6 | — |
+| 5 | 计划任务 | `schtasks /Query /TN SysPulse.Host` | 跑阶段 3 构建出的 `SysPulse.Host.exe --install-task`（D7 静默提权通道） | ✅ |
 | 6 | 总结 | — | 打印每阶段 ✅/⚠/❌ + 人工收尾清单：PawnIO 装后可能需**重启**；装 PawnIO 并重启后 CPU 传感器才全（扩展重载由阶段 4 的 `x-cmdpal://reload` 自动完成，无需手动 Reload） | — |
 
 ## 关键风险与处理（诚实项）
 
 1. **阶段 4 CLI 部署 —— 已实测通过（2026-07-18 本机 spike）。**
-   - 验证结果：`dotnet build 扩展 -c Debug -p:Platform=x64` 产出松散 `AppxManifest.xml`（路径 `bin\x64\Debug\net9.0-windows10.0.26100.0\win-x64\AppxManifest.xml`）；`Add-AppxPackage -Register <manifest>` 成功，`Get-AppxPackage SensorMonitorExtension` → `Status: Ok`。**CLI 可替代 VS Deploy**（前提：开发者模式已开，阶段 2 保证）。
+   - 验证结果：`dotnet build 扩展 -c Debug -p:Platform=x64` 产出松散 `AppxManifest.xml`（路径 `bin\x64\Debug\net9.0-windows10.0.26100.0\win-x64\AppxManifest.xml`）；`Add-AppxPackage -Register <manifest>` 成功，`Get-AppxPackage SysPulseExtension` → `Status: Ok`。**CLI 可替代 VS Deploy**（前提：开发者模式已开，阶段 2 保证）。
    - **外部重新加载亦可脚本化**（spike 确认）：CmdPal 设置 `AllowExternalReload` 存于 `%LOCALAPPDATA%\Packages\<CmdPal PackageFamilyName>\LocalState\settings.json`（本机 `Microsoft.CommandPalette_8wekyb3d8bbwe`）；置 `true` 后 `Start-Process 'x-cmdpal://reload'` 可无 GUI 触发扩展重载（`x-cmdpal` 协议已注册）。→ 阶段 4 追加：注册后 patch 该键为 `true` 并触发 reload，**"CmdPal 里手动 Reload"从人工收尾降级为自动**。
    - 保留兜底：若某新机器上 build 未生成松散布局或 runtime 包缺，仍**如实报错**并提示补 WinAppSDK runtime / 退回 VS Deploy，不假装成功。
    - 待办：跑通后把 CLI 部署命令回写 CLAUDE.md 坑 #1（"必须 VS Deploy"→"CLI 亦可，命令如下"）。

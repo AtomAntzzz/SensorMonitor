@@ -4,7 +4,7 @@
 
 ## D1 — 双进程：提权 Host + 非提权扩展
 
-**决策**：传感器读取放独立进程 `SensorMonitor.Host`（manifest `requireAdministrator`），CmdPal 扩展只做显示与拉起。
+**决策**：传感器读取放独立进程 `SysPulse.Host`（manifest `requireAdministrator`），CmdPal 扩展只做显示与拉起。
 
 **依据**：CmdPal 扩展是 MSIX 非提权进程；而 CPU 温度/主板温度依赖 ring0（PawnIO）+ 管理员权限（见 `references/sensor-sources.md`）。进程内引用 LibreHardwareMonitorLib 只能拿到残缺数据（大致只剩 GPU）。提权无法在进程内"升级"，只能另起进程。
 
@@ -18,7 +18,7 @@
 
 ## D3 — IPC：命名管道，一问一答行协议
 
-**决策**：管道名 `SensorMonitor.Host.v1`；客户端写一行 `GET`，服务端回一行 JSON 快照后断开。服务端 ACL 显式放开 Authenticated Users。
+**决策**：管道名 `SysPulse.Host.v1`；客户端写一行 `GET`，服务端回一行 JSON 快照后断开。服务端 ACL 显式放开 Authenticated Users。
 
 **依据**：
 - 提权服务端默认 ACL 会拒绝非提权客户端连接 —— 这是本架构的隐蔽坑，必须显式 `PipeSecurity`（跨完整性级别通信）。管道的 ACL 模型比共享内存（MMF）简单可靠。
@@ -52,6 +52,6 @@
 
 ## D8 — Host 无窗口（WinExe）+ 文件日志（post-MVP 加固引入）
 
-**决策**：Host `OutputType=WinExe`，错误落 `%ProgramData%\SensorMonitor\host.log`（超 1MB 重开）；`--dump` 用 `AttachConsole(-1)` 贴附父终端保住调试输出。
+**决策**：Host `OutputType=WinExe`，错误落 `%ProgramData%\SysPulse\host.log`（超 1MB 重开）；`--dump` 用 `AttachConsole(-1)` 贴附父终端保住调试输出。
 
 **依据**：常驻可见控制台窗口是 UX 硬伤（缺陷 F4），且窗口一关错误信息全丢。ProgramData 对提权进程可写、对用户可读。

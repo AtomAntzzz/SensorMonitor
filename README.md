@@ -1,4 +1,4 @@
-# SensorMonitor
+# SysPulse
 
 > 🌐 **[中文说明 →](README.zh-CN.md)**
 
@@ -34,9 +34,9 @@ Distribution is a **signed Inno installer** that bundles a self-contained host, 
 
 ```powershell
 # Host unit tests
-dotnet test tests/SensorMonitor.Host.Tests
+dotnet test tests/SysPulse.Host.Tests
 
-# Build the signed installer → installer/Output/SensorMonitorSetup_x64.exe
+# Build the signed installer → installer/Output/SysPulseSetup_x64.exe
 powershell -ExecutionPolicy Bypass -File installer/build.ps1
 ```
 
@@ -46,8 +46,8 @@ The CmdPal extension builds via `dotnet build -p:Platform=x64`, but deploying it
 
 Two processes:
 
-- **`SensorMonitor.Host`** — elevated; reads sensors via LibreHardwareMonitorLib and serves snapshots over a named pipe.
-- **`SensorMonitorExtension`** — the CmdPal MSIX extension; its dock slot controls poll a shared snapshot cache every second, and if the host isn't running a scheduled task silently starts it.
+- **`SysPulse.Host`** — elevated; reads sensors via LibreHardwareMonitorLib and serves snapshots over a named pipe.
+- **`SysPulseExtension`** — the CmdPal MSIX extension; its dock slot controls poll a shared snapshot cache every second, and if the host isn't running a scheduled task silently starts it.
 
 Why two processes (elevation + driver access) is unavoidable: see [docs/architecture.md](docs/architecture.md) (D1).
 
@@ -67,4 +67,4 @@ Why two processes (elevation + driver access) is unavoidable: see [docs/architec
 
 ## Support
 
-If you find SensorMonitor useful, consider supporting the project. See [`.github/FUNDING.yml`](.github/FUNDING.yml) for available channels — just uncomment your preferred option and fill in your ID.
+If you find SysPulse useful, consider supporting the project. See [`.github/FUNDING.yml`](.github/FUNDING.yml) for available channels — just uncomment your preferred option and fill in your ID.

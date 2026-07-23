@@ -22,14 +22,14 @@ band 固定在 dock 时扩展每 1s 轮询、Host 永不空闲；无人使用时
 - `PipeJsonServer.ServeOneAsync`：收到一行 `"GET"` → 回一行 JSON 快照。当前**不记录**请求时间。
   accept 循环在后台 `Task.Run`（`AcceptLoopAsync`）。
 - 扩展 `SnapshotCache` 每 1s 一次 `TryFetch`（有 band 固定时）；Host 未运行时静默通道 30s 内 `schtasks /Run` 拉回。
-- 计划任务 `SensorMonitor.Host`（`ONLOGON /RL HIGHEST`）自退后仍注册，靠它拉回，自退不注销。
-- `PipeJsonServerTests`（`tests/SensorMonitor.Host.Tests`）已有测试设施，可 TDD。
+- 计划任务 `SysPulse.Host`（`ONLOGON /RL HIGHEST`）自退后仍注册，靠它拉回，自退不注销。
+- `PipeJsonServerTests`（`tests/SysPulse.Host.Tests`）已有测试设施，可 TDD。
 
 ## 设计（方案 A）
 
 ### ① PipeJsonServer 记录末次请求时间
 
-`src/SensorMonitor.Host/Ipc/PipeJsonServer.cs`：
+`src/SysPulse.Host/Ipc/PipeJsonServer.cs`：
 - 新增 `public DateTimeOffset LastRequestUtc { get; private set; }`，构造函数中初始化为 `DateTimeOffset.UtcNow`。
 - 跨线程：accept 循环任务写、Host 检查 Timer 读。`DateTimeOffset` 非原子，用 `long _lastRequestTicks`
   （`Interlocked.Exchange` 写 / `Interlocked.Read` 读）承载 `UtcNow.UtcTicks`，`LastRequestUtc` 由其换算。
@@ -37,7 +37,7 @@ band 固定在 dock 时扩展每 1s 轮询、Host 永不空闲；无人使用时
 
 ### ② Host 空闲检查 Timer + 优雅退出
 
-`src/SensorMonitor.Host/Program.cs`：
+`src/SysPulse.Host/Program.cs`：
 - 常量 `const int IdleTimeoutMinutes = 5;`、`const int IdleCheckMs = 60_000;`（每 60s 查一次，廉价）。
 - `server.Start()` 之后、`exit.Wait()` 之前，建空闲检查 Timer：
   每 `IdleCheckMs` 检查 `DateTimeOffset.UtcNow - server.LastRequestUtc > TimeSpan.FromMinutes(IdleTimeoutMinutes)`，

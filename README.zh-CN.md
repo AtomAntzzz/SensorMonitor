@@ -1,4 +1,4 @@
-# SensorMonitor（中文说明）
+# SysPulse（中文说明）
 
 > 🌐 **[English →](README.md)**
 
@@ -37,9 +37,9 @@
 
 ```powershell
 # Host 单元测试
-dotnet test tests/SensorMonitor.Host.Tests
+dotnet test tests/SysPulse.Host.Tests
 
-# 构建签名安装器 → installer/Output/SensorMonitorSetup_x64.exe
+# 构建签名安装器 → installer/Output/SysPulseSetup_x64.exe
 powershell -ExecutionPolicy Bypass -File installer/build.ps1
 ```
 
@@ -51,8 +51,8 @@ powershell -ExecutionPolicy Bypass -File installer/build.ps1
 
 双进程：
 
-- **`SensorMonitor.Host`** —— 提权进程，用 LibreHardwareMonitorLib 读传感器，通过命名管道提供数据快照。
-- **`SensorMonitorExtension`** —— CmdPal MSIX 扩展；Dock 槽位控件每秒轮询共享快照缓存，检测到 Host 未运行时
+- **`SysPulse.Host`** —— 提权进程，用 LibreHardwareMonitorLib 读传感器，通过命名管道提供数据快照。
+- **`SysPulseExtension`** —— CmdPal MSIX 扩展；Dock 槽位控件每秒轮询共享快照缓存，检测到 Host 未运行时
   由计划任务静默拉起。
 
 为什么双进程（提权 + 驱动访问）不可避免：见 [docs/architecture.md](docs/architecture.md)（D1）。
@@ -73,5 +73,5 @@ powershell -ExecutionPolicy Bypass -File installer/build.ps1
 
 ## 赞助
 
-如果 SensorMonitor 对你有帮助，欢迎支持项目。可用渠道见 [`.github/FUNDING.yml`](.github/FUNDING.yml)
+如果 SysPulse 对你有帮助，欢迎支持项目。可用渠道见 [`.github/FUNDING.yml`](.github/FUNDING.yml)
 ——取消对应行注释并填入你的 ID 即可，提交后仓库自动出现 Sponsor 按钮。

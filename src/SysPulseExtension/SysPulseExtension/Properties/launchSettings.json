@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "SysPulseExtension (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true
+    },
+    "SysPulseExtension (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

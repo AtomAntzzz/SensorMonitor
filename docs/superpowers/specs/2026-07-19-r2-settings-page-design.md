@@ -25,28 +25,28 @@
 
 ## 前提事实（已核实）
 
-- `SensorMonitorExtensionCommandsProvider` **未设 `Settings` 属性** → 设置页是绿地。
+- `SysPulseExtensionCommandsProvider` **未设 `Settings` 属性** → 设置页是绿地。
 - `SnapshotCache.RefreshMs = 1000`（`const`），刷新在 `finally` 里 `_timer.Change(RefreshMs, …)` 重排。
 - 过期阈值 10s 写死在 `SensorSlotBand.RefreshCore`（`age > TimeSpan.FromSeconds(10)`）。
 - 温度读数：Host `SensorMapper.UnitOf` **仅温度**映射 `Unit == "°C"`。注意 band/选择页拿到的是
   `SlotCandidate`（只带 `Value`/`Unit`，**无 `Type`**），浏览页才是带 `Type` 的 `SensorReading`；
   故转换统一按 `Unit == "°C"` 判定，三处一致、无需 `Type`。
 - **三处温度显示位**：`SensorSlotBand.RefreshCore`（dock band）、`SensorPickerPage.GetItems`（选择页）、
-  `SensorMonitorExtensionPage.GetItems`（浏览页，`{r.Value:F1} {r.Unit}`）。
+  `SysPulseExtensionPage.GetItems`（浏览页，`{r.Value:F1} {r.Unit}`）。
 - `add-extension-settings` skill：`ToggleSetting`/`TextSetting`/`ChoiceSetSetting`；`SettingsChanged` 事件；
   在 `CommandProvider` 上设 `Settings = manager.Settings` 即自动出设置页。
   ⚠️ **持久化更正（2026-07-20 实测）**：宿主**不**自动存扩展设置——它只渲染设置页、并在用户改动时触发 `SettingsChanged`。
   持久化须扩展自管：`SettingsManager` **继承 Toolkit `JsonSettingsManager`**，设 `FilePath`
-  （`Utilities.BaseSettingsPath("SensorMonitorExtension")/settings.json`），构造末尾 `LoadSettings()` 读盘、
+  （`Utilities.BaseSettingsPath("SysPulseExtension")/settings.json`），构造末尾 `LoadSettings()` 读盘、
   `SettingsChanged` 里 `SaveSettings()` 写盘。缺此则每次启动回落种子默认（本期首版即踩此坑）。
-- **无扩展侧测试工程**（仅 `tests/SensorMonitor.Host.Tests`）。
+- **无扩展侧测试工程**（仅 `tests/SysPulse.Host.Tests`）。
 - R7 Host 空闲自退 = 5min 无请求；本期间隔上限 5s ≪ 5min，band 固定时 Host 永不空闲，R7 不受影响。
 
 ## 设计（方案 A）
 
 ### ① SettingsManager + Provider 接线
 
-新增 `src/SensorMonitorExtension/SensorMonitorExtension/Settings/SettingsManager.cs`（对齐 skill）：
+新增 `src/SysPulseExtension/SysPulseExtension/Settings/SettingsManager.cs`（对齐 skill）：
 
 - 持有 `Microsoft.CommandPalette.Extensions.Toolkit.Settings _settings`，装入下面两个 `ChoiceSetSetting`。
 - 暴露 `ICommandSettings Settings => _settings;` 与类型化 getter（`RefreshIntervalMs`、`Fahrenheit`）。
@@ -54,7 +54,7 @@
 - **单一 `OnSettingsChanged` 出口**：读两项 → `SnapshotCache.SetIntervalMs(RefreshIntervalMs)`；
   `TempDisplay.Fahrenheit = Fahrenheit` → `SnapshotCache.NotifyDisplayChanged()`（令 band 立即重绘）。
 
-`SensorMonitorExtensionCommandsProvider`：`private readonly SettingsManager _settings = new();`，
+`SysPulseExtensionCommandsProvider`：`private readonly SettingsManager _settings = new();`，
 构造函数里 `Settings = _settings.Settings;` → 设置页自动出现。显示位**不**逐个传 manager，
 统一读静态 `TempDisplay.Fahrenheit`（与 `SnapshotCache`/`SlotStore` 的静态单例风格一致），
 把显示位与 SettingsManager 解耦。
@@ -110,7 +110,7 @@
 
 - **无扩展单测工程** → `TempDisplay.Format` 内联、手动验证（同 `SlotLogic` 扩展侧现状；加测试工程列入"明确不做"）。
 - **手动验证清单**（净启 CmdPal，避坑 #9 的 reload 累加假象）：
-  1. CmdPal 设置里出现 Sensor Monitor 的两项（刷新间隔、温度单位）。
+  1. CmdPal 设置里出现 SysPulse 的两项（刷新间隔、温度单位）。
   2. 刷新间隔改 5s → dock 读数约每 5s 跳一次；改回 1s 立即恢复每秒。
   3. 温度单位改 °F → 三个温度 band + 选择页 + 浏览页的温度全部转 °F（如 50°C→122°F），
      CPU 频率不受影响；改回 °C 恢复。

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  SensorMonitor 新机器一键开发环境引导（自提权、幂等）。
+  SysPulse 新机器一键开发环境引导（自提权、幂等）。
 .DESCRIPTION
   预检 → 工具链 → 开发者模式 → Host 构建测试 → 扩展部署 → 计划任务 → 总结。
   详见 docs/superpowers/specs/2026-07-18-fresh-machine-setup-script-design.md。
@@ -211,16 +211,16 @@ function Invoke-Stage3BuildTest {
     }
     # 停运行中的 Host，避免锁 bin（坑 #6）。新机上进程必然不存在，taskkill 会写 stderr——
     # 直接 2>$null 在 EAP=Stop 下必炸，须走 Invoke-Native。
-    Invoke-Native { taskkill /f /im SensorMonitor.Host.exe } | Out-Null
+    Invoke-Native { taskkill /f /im SysPulse.Host.exe } | Out-Null
     Push-Location $script:RepoRoot
     try {
         # 逐步校验退出码：restore 失败（如断网）若放任级联，最终会被误报成"test 失败"。
         # 注：sln 只含 Host + Tests（扩展在独立 sln，阶段 4 单独带 -p:Platform=x64 构建），
         # 整 sln 构建无需平台参数，已实测通过。
         foreach ($step in @(
-            @{ Name = 'dotnet restore'; Cmd = { dotnet restore SensorMonitor.sln } },
-            @{ Name = 'dotnet build';   Cmd = { dotnet build SensorMonitor.sln -c Debug } },
-            @{ Name = 'dotnet test';    Cmd = { dotnet test tests/SensorMonitor.Host.Tests -c Debug } }
+            @{ Name = 'dotnet restore'; Cmd = { dotnet restore SysPulse.sln } },
+            @{ Name = 'dotnet build';   Cmd = { dotnet build SysPulse.sln -c Debug } },
+            @{ Name = 'dotnet test';    Cmd = { dotnet test tests/SysPulse.Host.Tests -c Debug } }
         )) {
             & $step.Cmd
             if ($LASTEXITCODE -ne 0) {
@@ -279,16 +279,16 @@ function Invoke-CmdPalReload {
 function Invoke-Stage4Deploy {
     Write-Step '阶段 4：扩展部署（CLI，已实测）'
     $extProj = Join-Path $script:RepoRoot `
-        'src\SensorMonitorExtension\SensorMonitorExtension\SensorMonitorExtension.csproj'
+        'src\SysPulseExtension\SysPulseExtension\SysPulseExtension.csproj'
     if ($CheckOnly) {
         Add-Result '4 扩展部署' '已就绪' 'CLI 部署已实测可行；CheckOnly 不执行'
         return
     }
     try {
         # 已注册的松散包被 CmdPal 激活后，扩展进程常驻并锁死自己的 bin（坑 #6 的扩展版，
-        # 真机实测：MSB3027 文件被 SensorMonitorExtension 锁定）——构建前先杀，
+        # 真机实测：MSB3027 文件被 SysPulseExtension 锁定）——构建前先杀，
         # CmdPal 会按需重拉，末尾 reload 也会重启它。
-        Invoke-Native { taskkill /f /im SensorMonitorExtension.exe } | Out-Null
+        Invoke-Native { taskkill /f /im SysPulseExtension.exe } | Out-Null
         Push-Location $script:RepoRoot
         try {
             dotnet build $extProj -c Debug -p:Platform=x64
@@ -322,12 +322,12 @@ function Invoke-Stage4Deploy {
 # 且 schtasks 查不到任务时写 stderr，在 EAP=Stop 下经 2> 重定向必炸（均 PS 5.1 实测）。
 function Invoke-Stage5ScheduledTask {
     Write-Step '阶段 5：计划任务'
-    if ((Invoke-Native { schtasks /Query /TN SensorMonitor.Host }).Ok) {
-        Add-Result '5 计划任务' '已就绪' '任务 SensorMonitor.Host 已存在'; return
+    if ((Invoke-Native { schtasks /Query /TN SysPulse.Host }).Ok) {
+        Add-Result '5 计划任务' '已就绪' '任务 SysPulse.Host 已存在'; return
     }
     if ($CheckOnly) { Add-Result '5 计划任务' '⚠' '未注册（需 --install-task）'; return }
     $hostExe = Join-Path $script:RepoRoot `
-        'src\SensorMonitor.Host\bin\Debug\net8.0\SensorMonitor.Host.exe'
+        'src\SysPulse.Host\bin\Debug\net8.0\SysPulse.Host.exe'
     if (-not (Test-Path $hostExe)) {
         Add-Result '5 计划任务' '⚠' "Host exe 不存在（阶段 3 未成功？）: $hostExe"
         return
@@ -335,14 +335,14 @@ function Invoke-Stage5ScheduledTask {
     # Host 是 WinExe（GUI 子系统）：`& $hostExe` 不等它退出就返回，立即复查必竞态——
     # 用 Start-Process -Wait 拿真实退出码。
     $p = Start-Process -FilePath $hostExe -ArgumentList '--install-task' -Wait -PassThru
-    if ($p.ExitCode -eq 0 -and (Invoke-Native { schtasks /Query /TN SensorMonitor.Host }).Ok) {
+    if ($p.ExitCode -eq 0 -and (Invoke-Native { schtasks /Query /TN SysPulse.Host }).Ok) {
         Add-Result '5 计划任务' '已完成' '已注册静默提权任务'
     }
     else { Add-Result '5 计划任务' '⚠' "--install-task 退出码 $($p.ExitCode)，或任务仍未注册" }
 }
 
 function Main {
-    Write-Step "SensorMonitor 引导开始（RepoRoot=$script:RepoRoot；CheckOnly=$CheckOnly；SkipInstall=$SkipInstall）"
+    Write-Step "SysPulse 引导开始（RepoRoot=$script:RepoRoot；CheckOnly=$CheckOnly；SkipInstall=$SkipInstall）"
     Invoke-Stage0Preflight
     Ensure-Elevated
     Invoke-Stage1Toolchain

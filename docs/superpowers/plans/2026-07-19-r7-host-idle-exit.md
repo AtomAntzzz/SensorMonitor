@@ -11,10 +11,10 @@
 **Spec:** `docs/superpowers/specs/2026-07-19-r7-host-idle-exit-design.md`（含 4 项验收，勿重开设计）
 
 **已核实事实（勿重新查证）：**
-- `PipeJsonServer.ServeOneAsync`（`src/SensorMonitor.Host/Ipc/PipeJsonServer.cs`）：`var request = await reader.ReadLineAsync(connCts.Token); if (request == "GET") { await writer.WriteLineAsync(...); await reader.ReadLineAsync(...); }`。
+- `PipeJsonServer.ServeOneAsync`（`src/SysPulse.Host/Ipc/PipeJsonServer.cs`）：`var request = await reader.ReadLineAsync(connCts.Token); if (request == "GET") { await writer.WriteLineAsync(...); await reader.ReadLineAsync(...); }`。
 - `Program.cs`：`server.Start();` → `HostLog.Write("Host 启动…");` → `var exit = new ManualResetEventSlim();` → `Console.CancelKeyPress += …;` → `exit.Wait(); return 0;`。refresh Timer 用 one-shot 重排 + `catch (ObjectDisposedException)`。
-- 测试工程 `tests/SensorMonitor.Host.Tests/PipeJsonServerTests.cs`，xUnit，现有测试用"连管道→写 GET→读响应"模式；当前 11 单测。
-- **坑 #6（Host 锁 bin）**：跑 Host 测试/构建前须停 Host；因扩展 SnapshotCache 会自动重拉，需连 CmdPal 一并停：`taskkill //f //im Microsoft.CmdPal.UI.exe` +（提权任务拉起的 Host）`schtasks //End //TN SensorMonitor.Host`。
+- 测试工程 `tests/SysPulse.Host.Tests/PipeJsonServerTests.cs`，xUnit，现有测试用"连管道→写 GET→读响应"模式；当前 11 单测。
+- **坑 #6（Host 锁 bin）**：跑 Host 测试/构建前须停 Host；因扩展 SnapshotCache 会自动重拉，需连 CmdPal 一并停：`taskkill //f //im Microsoft.CmdPal.UI.exe` +（提权任务拉起的 Host）`schtasks //End //TN SysPulse.Host`。
 
 ---
 
@@ -22,20 +22,20 @@
 
 | 文件 | 动作 | 职责 |
 |------|------|------|
-| `src/SensorMonitor.Host/Ipc/PipeJsonServer.cs` | 修改 | 加 `LastRequestUtc`（Interlocked ticks），GET 时刷新 |
-| `tests/SensorMonitor.Host.Tests/PipeJsonServerTests.cs` | 修改 | 加 `LastRequestUtc` 随 GET 前进的用例 |
-| `src/SensorMonitor.Host/Program.cs` | 修改 | 加空闲检查 Timer + 优雅退出 |
+| `src/SysPulse.Host/Ipc/PipeJsonServer.cs` | 修改 | 加 `LastRequestUtc`（Interlocked ticks），GET 时刷新 |
+| `tests/SysPulse.Host.Tests/PipeJsonServerTests.cs` | 修改 | 加 `LastRequestUtc` 随 GET 前进的用例 |
+| `src/SysPulse.Host/Program.cs` | 修改 | 加空闲检查 Timer + 优雅退出 |
 | `CLAUDE.md` / 路线计划 | 修改 | 状态收口 |
 
-> 命令均在仓库根 `D:/Workspace/SensorMonitor` 执行。
+> 命令均在仓库根 `D:/Workspace/SysPulse` 执行。
 
 ---
 
 ## Task 1: PipeJsonServer 记录末次请求时间（TDD）
 
 **Files:**
-- Modify: `src/SensorMonitor.Host/Ipc/PipeJsonServer.cs`
-- Test: `tests/SensorMonitor.Host.Tests/PipeJsonServerTests.cs`
+- Modify: `src/SysPulse.Host/Ipc/PipeJsonServer.cs`
+- Test: `tests/SysPulse.Host.Tests/PipeJsonServerTests.cs`
 
 - [ ] **Step 1: 写失败测试**
 
@@ -45,7 +45,7 @@
     [Fact]
     public async Task LastRequestUtc_Advances_On_Get()
     {
-        var pipeName = $"SensorMonitor.Test.{Guid.NewGuid():N}";
+        var pipeName = $"SysPulse.Test.{Guid.NewGuid():N}";
         var snapshot = new SensorSnapshot(DateTimeOffset.UtcNow,
             [new SensorReading("/cpu/0/clock/1", "CPU", "Core #1", "Clock", 5200f, "MHz")]);
         using var server = new PipeJsonServer(pipeName, () => snapshot);
@@ -70,7 +70,7 @@
 先停 Host 与 CmdPal 避免锁 bin（坑 #6）：
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && powershell -NoProfile -Command "Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null; schtasks //End //TN SensorMonitor.Host 2>/dev/null; dotnet test tests/SensorMonitor.Host.Tests --filter LastRequestUtc_Advances_On_Get 2>&1 | tail -5
+cd "D:/Workspace/SysPulse" && powershell -NoProfile -Command "Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null; schtasks //End //TN SysPulse.Host 2>/dev/null; dotnet test tests/SysPulse.Host.Tests --filter LastRequestUtc_Advances_On_Get 2>&1 | tail -5
 ```
 Expected: 编译失败（`PipeJsonServer` 无 `LastRequestUtc`）。
 
@@ -113,14 +113,14 @@ Expected: 编译失败（`PipeJsonServer` 无 `LastRequestUtc`）。
 - [ ] **Step 4: 跑全部测试确认通过**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && dotnet test tests/SensorMonitor.Host.Tests 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && dotnet test tests/SysPulse.Host.Tests 2>&1 | tail -3
 ```
 Expected: `已通过! … 通过: 12`（旧 11 + 新 1）。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitor.Host/Ipc/PipeJsonServer.cs tests/SensorMonitor.Host.Tests/PipeJsonServerTests.cs && git commit -m "feat(host): track LastRequestUtc on pipe GET (R7)"
+cd "D:/Workspace/SysPulse" && git add src/SysPulse.Host/Ipc/PipeJsonServer.cs tests/SysPulse.Host.Tests/PipeJsonServerTests.cs && git commit -m "feat(host): track LastRequestUtc on pipe GET (R7)"
 ```
 
 ---
@@ -128,7 +128,7 @@ cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitor.Host/Ipc/PipeJsonSe
 ## Task 2: Host 空闲检查 Timer + 优雅退出
 
 **Files:**
-- Modify: `src/SensorMonitor.Host/Program.cs`
+- Modify: `src/SysPulse.Host/Program.cs`
 
 - [ ] **Step 1: 加空闲检查 Timer**
 
@@ -159,7 +159,7 @@ using var idleTimer = new Timer(_ =>
 - [ ] **Step 2: 构建验证**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && powershell -NoProfile -Command "Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null; schtasks //End //TN SensorMonitor.Host 2>/dev/null; dotnet build src/SensorMonitor.Host 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && powershell -NoProfile -Command "Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null; schtasks //End //TN SysPulse.Host 2>/dev/null; dotnet build src/SysPulse.Host 2>&1 | tail -3
 ```
 Expected: `0 个错误`。
 
@@ -169,16 +169,16 @@ Expected: `0 个错误`。
 
 管理员终端启动 Host（不连管道）：
 ```bash
-cd "D:/Workspace/SensorMonitor" && powershell -NoProfile -Command "Start-Process 'src\SensorMonitor.Host\bin\Debug\net8.0\SensorMonitor.Host.exe' -Verb RunAs"
+cd "D:/Workspace/SysPulse" && powershell -NoProfile -Command "Start-Process 'src\SysPulse.Host\bin\Debug\net8.0\SysPulse.Host.exe' -Verb RunAs"
 ```
-- 立刻确认进程在：`tasklist //FI "IMAGENAME eq SensorMonitor.Host.exe"`。
-- 等约 5min 不做任何连接 → 进程消失、`%ProgramData%\SensorMonitor\host.log` 出现"空闲 5 分钟无管道请求，自退"。
+- 立刻确认进程在：`tasklist //FI "IMAGENAME eq SysPulse.Host.exe"`。
+- 等约 5min 不做任何连接 → 进程消失、`%ProgramData%\SysPulse\host.log` 出现"空闲 5 分钟无管道请求，自退"。
 - **反向验证**：再启动 Host，同时保持 Dock 有 band 固定（每 1s 轮询）→ 超 5min 仍**不**退出（有请求）。
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitor.Host/Program.cs && git commit -m "feat(host): self-exit after 5min idle (R7)"
+cd "D:/Workspace/SysPulse" && git add src/SysPulse.Host/Program.cs && git commit -m "feat(host): self-exit after 5min idle (R7)"
 ```
 
 ---
@@ -191,14 +191,14 @@ cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitor.Host/Program.cs && 
 
 - [ ] **Step 1: 端到端复验（与静默重拉配合）**
 
-1. 确保计划任务注册（`schtasks //Query //TN SensorMonitor.Host` 可见）。
-2. 让 Host 因空闲自退（或手动 `schtasks //End //TN SensorMonitor.Host` 模拟已退）。
+1. 确保计划任务注册（`schtasks //Query //TN SysPulse.Host` 可见）。
+2. 让 Host 因空闲自退（或手动 `schtasks //End //TN SysPulse.Host` 模拟已退）。
 3. 部署松散 dev 扩展并在 Dock 固定一个 band → 30s 内 SnapshotCache 静默通道拉回 Host、band 恢复读数、**无 UAC**（验证自退不破坏重拉链路）。
 
 - [ ] **Step 2: 全量单测回归**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && powershell -NoProfile -Command "Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null; schtasks //End //TN SensorMonitor.Host 2>/dev/null; dotnet test tests/SensorMonitor.Host.Tests 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && powershell -NoProfile -Command "Get-Process 'Microsoft.CmdPal.UI' -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null; schtasks //End //TN SysPulse.Host 2>/dev/null; dotnet test tests/SysPulse.Host.Tests 2>&1 | tail -3
 ```
 Expected: `通过: 12`。
 
@@ -222,7 +222,7 @@ Expected: `通过: 12`。
 - [ ] **Step 5: Commit + push**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add CLAUDE.md docs/plans/2026-07-18-verification-and-next-phase.md && git commit -m "docs: R7 host idle self-exit complete" && git push
+cd "D:/Workspace/SysPulse" && git add CLAUDE.md docs/plans/2026-07-18-verification-and-next-phase.md && git commit -m "docs: R7 host idle self-exit complete" && git push
 ```
 
 ---

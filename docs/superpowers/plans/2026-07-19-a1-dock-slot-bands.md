@@ -16,7 +16,7 @@
 - 上下文菜单 API：`ListItem.MoreCommands = [new CommandContextItem(cmd), ...]`（`.github/instructions/cmdpal-extension.instructions.md` 确认）。
 - `LaunchHostCommand`（`Commands/LaunchHostCommand.cs`）已有 `Name="启动传感器 Host"`、`Id`、`TryLaunchSilent()`，可直接复用为主命令。
 - 标签显隐 = Dock 宿主"编辑停靠栏"内置右键能力，零代码（用户实机确认）。
-- 部署序列（本机已验证）：杀 `SensorMonitorExtension.exe`（锁 bin，坑 #6 扩展版）→ `dotnet build -p:Platform=x64` → `Add-AppxPackage -Register` → `x-cmdpal://reload`（AllowExternalReload 已开启）。
+- 部署序列（本机已验证）：杀 `SysPulseExtension.exe`（锁 bin，坑 #6 扩展版）→ `dotnet build -p:Platform=x64` → `Add-AppxPackage -Register` → `x-cmdpal://reload`（AllowExternalReload 已开启）。
 - CmdPal settings.json 勿用 ConvertFrom-Json 碰（重复大小写键，见 setup 计划 P13）——本计划不涉及。
 
 **⚠ 风险闸（Task 1 是闸门）：** spec 列了 3 个实现假设（多 band、MoreCommands 渲染、主命令沉底）。Task 1 用一次性冒烟证伪；若 MoreCommands 不渲染，**停下回报用户**再定降级方案（spec 风险 3），不要自行往下做。
@@ -27,23 +27,23 @@
 
 | 文件 | 动作 | 职责 |
 |------|------|------|
-| `src/SensorMonitorExtension/SensorMonitorExtension/Ipc/SnapshotCache.cs` | 新增 | 单例轮询 + 缓存 + 静默拉起节流 |
+| `src/SysPulseExtension/SysPulseExtension/Ipc/SnapshotCache.cs` | 新增 | 单例轮询 + 缓存 + 静默拉起节流 |
 | `.../Dock/SlotCategory.cs` | 新增 | `SlotCategory` / `SlotCandidate` 两个 record |
 | `.../Dock/SlotLogic.cs` | 新增 | Resolve/Cycle 纯函数 |
 | `.../Dock/SlotCategories.cs` | 新增 | 4 个类别的声明式定义 |
 | `.../Dock/SlotStore.cs` | 新增 | 轮换选择持久化（slots.json） |
 | `.../Dock/SensorSlotBand.cs` | 新增 | 槽位控件 + CycleSlotCommand |
-| `.../SensorMonitorExtensionCommandsProvider.cs` | 修改 | 返回 4 个 WrappedDockItem |
+| `.../SysPulseExtensionCommandsProvider.cs` | 修改 | 返回 4 个 WrappedDockItem |
 | `.../Dock/SensorDockBand.cs` | 删除 | 旧合并 band |
 
-> 下文所有相对路径省略前缀 `src/SensorMonitorExtension/SensorMonitorExtension/`。构建/部署命令均在仓库根 `D:/Workspace/SensorMonitor` 执行。
+> 下文所有相对路径省略前缀 `src/SysPulseExtension/SysPulseExtension/`。构建/部署命令均在仓库根 `D:/Workspace/SysPulse` 执行。
 
 ---
 
 ## Task 1: 风险证伪冒烟（一次性代码，验证后还原，不提交）
 
 **Files:**
-- Modify: `SensorMonitorExtensionCommandsProvider.cs`（临时）
+- Modify: `SysPulseExtensionCommandsProvider.cs`（临时）
 
 - [ ] **Step 1: 临时改 GetDockBands 返回 3 条 band（现有 1 + 冒烟 2）**
 
@@ -59,8 +59,8 @@
             Subtitle = "菜单顺序测试",
             MoreCommands =
             [
-                new CommandContextItem(new NoOpCommand() { Name = "测试A", Id = "com.sensormonitor.spike.a" }),
-                new CommandContextItem(new NoOpCommand() { Name = "测试B", Id = "com.sensormonitor.spike.b" }),
+                new CommandContextItem(new NoOpCommand() { Name = "测试A", Id = "com.syspulse.spike.a" }),
+                new CommandContextItem(new NoOpCommand() { Name = "测试B", Id = "com.syspulse.spike.b" }),
             ],
         };
         var smoke2 = new ListItem(new Commands.LaunchHostCommand())
@@ -70,9 +70,9 @@
         };
         return
         [
-            new WrappedDockItem([_band], "com.sensormonitor.dock", "Sensor Monitor"),
-            new WrappedDockItem([smoke1], "com.sensormonitor.spike1", "冒烟1"),
-            new WrappedDockItem([smoke2], "com.sensormonitor.spike2", "冒烟2"),
+            new WrappedDockItem([_band], "com.syspulse.dock", "SysPulse"),
+            new WrappedDockItem([smoke1], "com.syspulse.spike1", "冒烟1"),
+            new WrappedDockItem([smoke2], "com.syspulse.spike2", "冒烟2"),
         ];
     }
 ```
@@ -80,18 +80,18 @@
 - [ ] **Step 2: 构建 + 部署**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 2>/dev/null; dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && taskkill //f //im SysPulseExtension.exe 2>/dev/null; dotnet build src/SysPulseExtension/SysPulseExtension/SysPulseExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
 ```
 Expected: `0 个错误`。
 
 ```bash
-powershell -NoProfile -Command "Add-AppxPackage -Register 'D:\Workspace\SensorMonitor\src\SensorMonitorExtension\SensorMonitorExtension\bin\x64\Debug\net9.0-windows10.0.26100.0\win-x64\AppxManifest.xml'; Start-Process 'x-cmdpal://reload'"
+powershell -NoProfile -Command "Add-AppxPackage -Register 'D:\Workspace\SysPulse\src\SysPulseExtension\SysPulseExtension\bin\x64\Debug\net9.0-windows10.0.26100.0\win-x64\AppxManifest.xml'; Start-Process 'x-cmdpal://reload'"
 ```
 Expected: 无输出（成功）。
 
 - [ ] **Step 3: 人工核验（需用户看 Dock，逐项记录）**
 
-1. 编辑停靠栏中可见 3 条独立 band（Sensor Monitor / 冒烟1 / 冒烟2），可分别固定 → **多 band 假设成立？**
+1. 编辑停靠栏中可见 3 条独立 band（SysPulse / 冒烟1 / 冒烟2），可分别固定 → **多 band 假设成立？**
 2. 固定"冒烟1"，非编辑模式右键 → 菜单是否含 测试A / 测试B / 启动传感器 Host → **MoreCommands 渲染假设成立？**
 3. 记录菜单顺序：主命令（启动传感器 Host）是否**沉底** → **沉底假设成立？** 若主命令置顶：后续 Task 5 改用 fallback（`Command`=NoOp，三项全放 MoreCommands 末位放启动 Host，单击行为改为无操作——需先回报用户确认）。
 4. 编辑停靠栏右键"冒烟1" → 标签 → 关标题/关字幕逐个试 → **宿主标签显隐对自建 band 生效？**
@@ -101,7 +101,7 @@ Expected: 无输出（成功）。
 - [ ] **Step 4: 还原冒烟代码（不提交任何内容）**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git checkout -- src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtensionCommandsProvider.cs && git status --short
+cd "D:/Workspace/SysPulse" && git checkout -- src/SysPulseExtension/SysPulseExtension/SysPulseExtensionCommandsProvider.cs && git status --short
 ```
 Expected: 无输出（工作区干净）。冒烟结论记录在本任务 Step 3 的勾选注记里即可。
 
@@ -118,7 +118,7 @@ Expected: 无输出（工作区干净）。冒烟结论记录在本任务 Step 3
 using System;
 using System.Threading;
 
-namespace SensorMonitorExtension.Ipc;
+namespace SysPulseExtension.Ipc;
 
 /// <summary>
 /// 全局快照缓存：一个 1s Timer、每周期一次管道请求，所有 Dock 控件读缓存。
@@ -173,14 +173,14 @@ internal static class SnapshotCache
 - [ ] **Step 2: 构建验证**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 2>/dev/null; dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && taskkill //f //im SysPulseExtension.exe 2>/dev/null; dotnet build src/SysPulseExtension/SysPulseExtension/SysPulseExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
 ```
 Expected: `0 个错误`。
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitorExtension/SensorMonitorExtension/Ipc/SnapshotCache.cs && git commit -m "feat(ext): shared snapshot cache with throttled silent relaunch"
+cd "D:/Workspace/SysPulse" && git add src/SysPulseExtension/SysPulseExtension/Ipc/SnapshotCache.cs && git commit -m "feat(ext): shared snapshot cache with throttled silent relaunch"
 ```
 
 ---
@@ -197,9 +197,9 @@ cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitorExtension/SensorMoni
 ```csharp
 using System;
 using System.Collections.Generic;
-using SensorMonitorExtension.Ipc;
+using SysPulseExtension.Ipc;
 
-namespace SensorMonitorExtension.Dock;
+namespace SysPulseExtension.Dock;
 
 /// <summary>一类 Dock 槽位控件的声明式定义（spec：类别定义表）。加新类别只加一份定义。</summary>
 internal sealed record SlotCategory(
@@ -220,7 +220,7 @@ internal sealed record SlotCandidate(string Key, string Label, float Value, stri
 using System.Collections.Generic;
 using System.Linq;
 
-namespace SensorMonitorExtension.Dock;
+namespace SysPulseExtension.Dock;
 
 /// <summary>候选解析与轮换的纯函数（无 UI 依赖，为将来单测留口，spec：架构）。</summary>
 internal static class SlotLogic
@@ -260,9 +260,9 @@ internal static class SlotLogic
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SensorMonitorExtension.Ipc;
+using SysPulseExtension.Ipc;
 
-namespace SensorMonitorExtension.Dock;
+namespace SysPulseExtension.Dock;
 
 /// <summary>4 个预设控件的类别定义（spec：类别定义表）。候选按 Id 排序保证轮换顺序稳定。</summary>
 internal static class SlotCategories
@@ -306,14 +306,14 @@ internal static class SlotCategories
 - [ ] **Step 4: 构建验证**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 2>/dev/null; dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && taskkill //f //im SysPulseExtension.exe 2>/dev/null; dotnet build src/SysPulseExtension/SysPulseExtension/SysPulseExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
 ```
 Expected: `0 个错误`。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitorExtension/SensorMonitorExtension/Dock/SlotCategory.cs src/SensorMonitorExtension/SensorMonitorExtension/Dock/SlotLogic.cs src/SensorMonitorExtension/SensorMonitorExtension/Dock/SlotCategories.cs && git commit -m "feat(ext): slot model, cycle logic, and 4 preset category definitions"
+cd "D:/Workspace/SysPulse" && git add src/SysPulseExtension/SysPulseExtension/Dock/SlotCategory.cs src/SysPulseExtension/SysPulseExtension/Dock/SlotLogic.cs src/SysPulseExtension/SysPulseExtension/Dock/SlotCategories.cs && git commit -m "feat(ext): slot model, cycle logic, and 4 preset category definitions"
 ```
 
 ---
@@ -331,7 +331,7 @@ using System.IO;
 using System.Text.Json;
 using Windows.Storage;
 
-namespace SensorMonitorExtension.Dock;
+namespace SysPulseExtension.Dock;
 
 /// <summary>
 /// 各控件当前轮换选择的持久化：LocalState\slots.json，形如 {"cpuclock":"__max__",...}。
@@ -378,14 +378,14 @@ internal static class SlotStore
 - [ ] **Step 2: 构建验证**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 2>/dev/null; dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && taskkill //f //im SysPulseExtension.exe 2>/dev/null; dotnet build src/SysPulseExtension/SysPulseExtension/SysPulseExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
 ```
 Expected: `0 个错误`。
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitorExtension/SensorMonitorExtension/Dock/SlotStore.cs && git commit -m "feat(ext): per-slot selection persistence in LocalState slots.json"
+cd "D:/Workspace/SysPulse" && git add src/SysPulseExtension/SysPulseExtension/Dock/SlotStore.cs && git commit -m "feat(ext): per-slot selection persistence in LocalState slots.json"
 ```
 
 ---
@@ -397,15 +397,15 @@ cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitorExtension/SensorMoni
 
 - [ ] **Step 1: 写实现**
 
-> ⚠ 若 Task 1 证伪了"主命令沉底"：把 base ctor 换成 `base(new NoOpCommand() { Id = "com.sensormonitor.slot.noop" })`，并把 `new CommandContextItem(new Commands.LaunchHostCommand())` 追加到 `MoreCommands` 末尾（先回报用户确认单击行为变化）。
+> ⚠ 若 Task 1 证伪了"主命令沉底"：把 base ctor 换成 `base(new NoOpCommand() { Id = "com.syspulse.slot.noop" })`，并把 `new CommandContextItem(new Commands.LaunchHostCommand())` 追加到 `MoreCommands` 末尾（先回报用户确认单击行为变化）。
 
 ```csharp
 using System;
 using System.Collections.Generic;
 using Microsoft.CommandPalette.Extensions.Toolkit;
-using SensorMonitorExtension.Ipc;
+using SysPulseExtension.Ipc;
 
-namespace SensorMonitorExtension.Dock;
+namespace SysPulseExtension.Dock;
 
 /// <summary>
 /// 一个"类别槽位"Dock 控件：显示类内当前选中传感器，右键 上一个/下一个 轮换（spec：显示规则）。
@@ -495,7 +495,7 @@ internal sealed partial class CycleSlotCommand : InvokableCommand
         _delta = delta;
         Name = (delta > 0 ? "下一个" : "上一个") + cat.CycleNoun;
         // Dock 项 Command.Id 为空会被静默忽略（坑 #3），上下文命令一并给足。
-        Id = $"com.sensormonitor.{cat.Id}.{(delta > 0 ? "next" : "prev")}";
+        Id = $"com.syspulse.{cat.Id}.{(delta > 0 ? "next" : "prev")}";
     }
 
     public override CommandResult Invoke()
@@ -509,14 +509,14 @@ internal sealed partial class CycleSlotCommand : InvokableCommand
 - [ ] **Step 2: 构建验证**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 2>/dev/null; dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && taskkill //f //im SysPulseExtension.exe 2>/dev/null; dotnet build src/SysPulseExtension/SysPulseExtension/SysPulseExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
 ```
 Expected: `0 个错误`。
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitorExtension/SensorMonitorExtension/Dock/SensorSlotBand.cs && git commit -m "feat(ext): sensor slot band with in-category cycling"
+cd "D:/Workspace/SysPulse" && git add src/SysPulseExtension/SysPulseExtension/Dock/SensorSlotBand.cs && git commit -m "feat(ext): sensor slot band with in-category cycling"
 ```
 
 ---
@@ -524,7 +524,7 @@ cd "D:/Workspace/SensorMonitor" && git add src/SensorMonitorExtension/SensorMoni
 ## Task 6: Provider 接线 + 删除旧合并 band
 
 **Files:**
-- Modify: `SensorMonitorExtensionCommandsProvider.cs`
+- Modify: `SysPulseExtensionCommandsProvider.cs`
 - Delete: `Dock/SensorDockBand.cs`
 
 - [ ] **Step 1: Provider 整文件替换为**
@@ -538,27 +538,27 @@ using System.Linq;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 
-using SensorMonitorExtension.Dock;
-using SensorMonitorExtension.Ipc;
+using SysPulseExtension.Dock;
+using SysPulseExtension.Ipc;
 
-namespace SensorMonitorExtension;
+namespace SysPulseExtension;
 
-public partial class SensorMonitorExtensionCommandsProvider : CommandProvider
+public partial class SysPulseExtensionCommandsProvider : CommandProvider
 {
     private readonly ICommandItem[] _commands;
     // band 一次性创建，保持对象身份稳定（Dock 依赖属性变更通知重绘）。
     private readonly ICommandItem[] _dockBands;
 
-    public SensorMonitorExtensionCommandsProvider()
+    public SysPulseExtensionCommandsProvider()
     {
-        DisplayName = "Sensor Monitor";
+        DisplayName = "SysPulse";
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
         _commands = [
-            new CommandItem(new SensorMonitorExtensionPage()) { Title = DisplayName },
+            new CommandItem(new SysPulseExtensionPage()) { Title = DisplayName },
         ];
         _dockBands = SlotCategories.All
             .Select(c => (ICommandItem)new WrappedDockItem(
-                [new SensorSlotBand(c)], $"com.sensormonitor.{c.Id}", c.DisplayName))
+                [new SensorSlotBand(c)], $"com.syspulse.{c.Id}", c.DisplayName))
             .ToArray();
     }
 
@@ -579,20 +579,20 @@ public partial class SensorMonitorExtensionCommandsProvider : CommandProvider
 - [ ] **Step 2: 删除旧 band**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git rm src/SensorMonitorExtension/SensorMonitorExtension/Dock/SensorDockBand.cs
+cd "D:/Workspace/SysPulse" && git rm src/SysPulseExtension/SysPulseExtension/Dock/SensorDockBand.cs
 ```
 
 - [ ] **Step 3: 构建验证**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 2>/dev/null; dotnet build src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
+cd "D:/Workspace/SysPulse" && taskkill //f //im SysPulseExtension.exe 2>/dev/null; dotnet build src/SysPulseExtension/SysPulseExtension/SysPulseExtension.csproj -c Debug -p:Platform=x64 2>&1 | tail -3
 ```
 Expected: `0 个错误`（若报 SensorDockBand 引用残留，检查 Provider 是否还有 `_band` 字段未删）。
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add -A && git commit -m "feat(ext): wire 4 preset slot bands, remove merged dock band"
+cd "D:/Workspace/SysPulse" && git add -A && git commit -m "feat(ext): wire 4 preset slot bands, remove merged dock band"
 ```
 
 ---
@@ -604,7 +604,7 @@ cd "D:/Workspace/SensorMonitor" && git add -A && git commit -m "feat(ext): wire 
 - [ ] **Step 1: 部署**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 2>/dev/null; powershell -NoProfile -Command "Add-AppxPackage -Register 'D:\Workspace\SensorMonitor\src\SensorMonitorExtension\SensorMonitorExtension\bin\x64\Debug\net9.0-windows10.0.26100.0\win-x64\AppxManifest.xml'; Start-Process 'x-cmdpal://reload'"
+cd "D:/Workspace/SysPulse" && taskkill //f //im SysPulseExtension.exe 2>/dev/null; powershell -NoProfile -Command "Add-AppxPackage -Register 'D:\Workspace\SysPulse\src\SysPulseExtension\SysPulseExtension\bin\x64\Debug\net9.0-windows10.0.26100.0\win-x64\AppxManifest.xml'; Start-Process 'x-cmdpal://reload'"
 ```
 
 - [ ] **Step 2: 逐项过 spec 验收清单（用户目视 + agent 辅助）**
@@ -614,7 +614,7 @@ cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 
 3. "启动传感器 Host"在菜单最下；单击 band 拉起 Host 无 UAC。
 4. 编辑停靠栏 → 标签：关标题/关字幕/全关（只剩图标）逐项生效；4 个图标字形肉眼可区分。
 5. 重启 CmdPal（`taskkill //f //im Microsoft.CmdPal.UI.exe` 后重开面板）→ 各控件记住轮换选择（agent 可核对 LocalState `slots.json` 内容）。
-6. 停 Host（`schtasks //End //TN SensorMonitor.Host`）→ 4 控件同显 `--/Host 未运行` → 30s 内静默恢复；恢复期间 host.log 无异常刷屏（单次拉起，无 4 倍请求）。
+6. 停 Host（`schtasks //End //TN SysPulse.Host`）→ 4 控件同显 `--/Host 未运行` → 30s 内静默恢复；恢复期间 host.log 无异常刷屏（单次拉起，无 4 倍请求）。
 7. 主板温度控件能轮换 SuperIO Temperature #1–#6（PawnIO 已装）。
 
 - [ ] **Step 3: 如有修复，逐个 commit（信息注明修的验收项）**
@@ -649,7 +649,7 @@ cd "D:/Workspace/SensorMonitor" && taskkill //f //im SensorMonitorExtension.exe 
 - [ ] **Step 3: Commit + push**
 
 ```bash
-cd "D:/Workspace/SensorMonitor" && git add -A && git commit -m "docs: mark A1 dock slot bands complete" && git push
+cd "D:/Workspace/SysPulse" && git add -A && git commit -m "docs: mark A1 dock slot bands complete" && git push
 ```
 
 ---

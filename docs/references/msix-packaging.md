@@ -1,6 +1,6 @@
 # MSIX 打包（本机复现步骤）
 
-> A2 验证产出（2026-07-19）。身份 = `CN=SensorMonitor Dev`（自签名 dev；商店提交时换 Partner Center 身份）。
+> A2 验证产出（2026-07-19）。身份 = `CN=SysPulse Dev`（自签名 dev；商店提交时换 Partner Center 身份）。
 > 工具：Windows Kits 10.0.26100.0 的 signtool/makeappx，位于
 > `C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\`（本机 PATH 无 signtool，用全路径）。
 
@@ -8,18 +8,18 @@
 
 ```powershell
 # 1) 自签名代码签名证书（非提权，CurrentUser\My）
-$cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=SensorMonitor Dev" `
+$cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=SysPulse Dev" `
     -CertStoreLocation "Cert:\CurrentUser\My" -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(5)
 $cert.Thumbprint                      # 记下，签名要用
-Export-Certificate -Cert $cert -FilePath "$env:TEMP\SensorMonitorDev.cer"
+Export-Certificate -Cert $cert -FilePath "$env:TEMP\SysPulseDev.cer"
 
 # 2) 信任导入（管理员，一次 UAC）—— 签名的 .msix 才被系统信任
-Import-Certificate -FilePath "$env:TEMP\SensorMonitorDev.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Import-Certificate -FilePath "$env:TEMP\SysPulseDev.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 ```
 
 ## 构建 + 签名（每架构）
 
-`<CSPROJ>` = `src/SensorMonitorExtension/SensorMonitorExtension/SensorMonitorExtension.csproj`；`<THUMB>` = 上面证书 thumbprint。
+`<CSPROJ>` = `src/SysPulseExtension/SysPulseExtension/SysPulseExtension.csproj`；`<THUMB>` = 上面证书 thumbprint。
 
 ```powershell
 # x64（ARM64 同理换 Platform=ARM64、目录 ARM64）
@@ -33,18 +33,18 @@ dotnet build <CSPROJ> -c Release -p:Platform=x64 -p:GenerateAppxPackageOnBuild=t
 
 ```powershell
 # 把两架构 .msix 拷进一个暂存目录，再合包并签名
-& "...\makeappx.exe" bundle /d AppPackages\bundle_stage /p AppPackages\SensorMonitorExtension_0.0.1.0.msixbundle
-& "...\signtool.exe" sign /fd SHA256 /sha1 <THUMB> AppPackages\SensorMonitorExtension_0.0.1.0.msixbundle
+& "...\makeappx.exe" bundle /d AppPackages\bundle_stage /p AppPackages\SysPulseExtension_0.0.1.0.msixbundle
+& "...\signtool.exe" sign /fd SHA256 /sha1 <THUMB> AppPackages\SysPulseExtension_0.0.1.0.msixbundle
 ```
 
 ## 本机实装（x64）
 
 ```powershell
-Get-AppxPackage *SensorMonitor* | Remove-AppxPackage           # 先移除松散/旧版，避身份冲突
-Add-AppxPackage -Path AppPackages\x64\...\SensorMonitorExtension_0.0.1.0_x64.msix
-(Get-AppxPackage *SensorMonitor*).SignatureKind                # 期望 Developer（非 None）
+Get-AppxPackage *SysPulse* | Remove-AppxPackage           # 先移除松散/旧版，避身份冲突
+Add-AppxPackage -Path AppPackages\x64\...\SysPulseExtension_0.0.1.0_x64.msix
+(Get-AppxPackage *SysPulse*).SignatureKind                # 期望 Developer（非 None）
 ```
-Host **不在包内** —— 靠计划任务 `SensorMonitor.Host` 静默拉起（R4 才随包分发）。
+Host **不在包内** —— 靠计划任务 `SysPulse.Host` 静默拉起（R4 才随包分发）。
 
 ## ⚠ 裁剪发现（Release `PublishTrimmed=true`）—— A2 关键产出
 

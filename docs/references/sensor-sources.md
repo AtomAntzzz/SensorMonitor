@@ -2,7 +2,7 @@
 
 ## 结论
 
-**选 LibreHardwareMonitorLib（NuGet，MPL-2.0），跑在独立提权进程 `SensorMonitor.Host` 里**，不在扩展进程内直接引用。理由见下文权限矩阵与 `docs/architecture.md` D1/D2。
+**选 LibreHardwareMonitorLib（NuGet，MPL-2.0），跑在独立提权进程 `SysPulse.Host` 里**，不在扩展进程内直接引用。理由见下文权限矩阵与 `docs/architecture.md` D1/D2。
 
 ## 候选对比
 
@@ -42,7 +42,7 @@
 
 ## 本机实测传感器清单（Task 3 Step 6 时填写）
 
-> 运行 `dotnet run --project src/SensorMonitor.Host -- --dump`（管理员）后，把本机关键传感器的 `Id / Hardware / Name / Type` 记录在此，供 Task 7 的默认匹配规则使用。
+> 运行 `dotnet run --project src/SysPulse.Host -- --dump`（管理员）后，把本机关键传感器的 `Id / Hardware / Name / Type` 记录在此，供 Task 7 的默认匹配规则使用。
 
 ### 实测机型（2026-07-18，管理员运行，**PawnIO 未安装**）
 
