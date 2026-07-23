@@ -1,0 +1,28 @@
+# SensorMonitor — 捐赠 / Sponsorship
+#
+# 取消对应行的注释后提交，仓库右上角自动出现 ❤ Sponsor 按钮。
+# 也可用 custom 字段指向任意付款/赞赏页面。
+#
+# 适合国内：爱发电 / 支付宝 / 微信赞赏码
+# 适合海外：GitHub Sponsors / Ko-fi / Buy Me a Coffee
+
+# === 选一项取消注释并填入你的 ID/链接 ===
+
+# GitHub Sponsors（需先开通 github.com/sponsors/<你的用户名>）
+# github: [AtomAntzzz]
+
+# Ko-fi
+# ko_fi: [your-id]
+
+# Buy Me a Coffee
+# buy_me_a_coffee: [your-id]
+
+# Patreon
+# patreon: [your-id]
+
+# 爱发电（国内常用；填入 https://afdian.com/a/<你的id>）
+# custom: ["https://afdian.com/a/<你的id>"]
+
+# 支付宝 / 微信收款码（把二维码图放 .github/ 或 repo 根目录后贴链接）
+# custom: ["https://raw.githubusercontent.com/AtomAntzzz/SensorMonitor/main/.github/alipay-qr.png"]
+# custom: ["https://raw.githubusercontent.com/AtomAntzzz/SensorMonitor/main/.github/wechat-qr.png"]

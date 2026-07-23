@@ -64,3 +64,7 @@ Why two processes (elevation + driver access) is unavoidable: see [docs/architec
 
 - Sensor backend: [LibreHardwareMonitorLib](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) (MPL-2.0).
 - Author: **AtomAntzzz**
+
+## Support
+
+If you find SensorMonitor useful, consider supporting the project. See [`.github/FUNDING.yml`](.github/FUNDING.yml) for available channels — just uncomment your preferred option and fill in your ID.

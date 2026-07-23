@@ -100,11 +100,28 @@
 
 ### 表述与命名优化
 
-- [ ] **「该机型无此传感器」文案复审** — 评估改为「未检测到传感器」是否更准，同时确认语义不漂移：
-  当前 `MissingHint`（有驱动数据但该类别恰无传感器）与 `EmptyHint`（缺 PawnIO 驱动）是**两态分工**，
-  「未检测到传感器」若同时套到两态会回到修复前的歧义（把"缺驱动"误说成"无传感器"）。需保持两态区分。
-- [ ] **项目名「SensorMonitor」贴切性评估** — 是否需要改名。涉及仓库名/包名/身份/扩展显示名多处联动，
-  改名成本高，**需用户拍板**再动。
+- [x] **「该机型无此传感器」→「无此传感器」** — 已改（2026-07-23）：经评估「未检测到传感器」会模糊两态分工
+  （把"缺驱动"误说成"传感器未检测到"），退回已修复的歧义。按要求改为 **"无此传感器"**（直白且保留两态语义：
+  驱动有数据但该类确无 = 无此传感器 ≠ 需 PawnIO 驱动）。改了 `SlotCategories.cs` 3 处 `MissingHint` (cpuclock/cputemp/boardtemp)
+  + `SlotCategory.cs` 记录注释；GPU 类两态原已同字"无 GPU 温度传感器"，未动。
+- [ ] **项目名「SensorMonitor」贴切性评估** — 用户确认目标为**对外发布**，需改更独特的名避免撞名。以下评估：
+
+  **现状**："SensorMonitor" 描述强、一看就懂，但极通用——GitHub/Windows Store 大量同名项目，搜索与辨识度差。
+  **改名成本**：身份锚点（MSIX Identity、管道名、计划任务、ProgramData 路径、命名空间、GitHub 仓库名）须联动改，
+  且老用户升级时管道/任务/目录路径变 → 需迁移逻辑。改得越晚装机基数越大成本越高，**所以发布前改是最佳时机**。
+
+  **候选（按 搜索友好 × 独特 × 易记 × 仍传达到意 排序）**：
+
+  | # | 候选 | 含义 | 优势 | 劣势 |
+  |---|------|------|------|------|
+  | **1** | **SysPulse** | 系统脉搏 | 短(8字)、专业、搜索无撞名 | 有医疗 App 同名但硬件领域无冲突 |
+  | **2** | **DockVitals** | Dock + 硬件体征 | 直白无需解释、说清在哪+做什么 | 略平淡、不够"品牌感" |
+  | **3** | **LiveGauge** | 实时仪表盘 | 传达到实时读数本质、有辨识度 | 英文生僻词、中文推广需辅助说明 |
+  | **4** | **PinSense** | Pin(钉在Dock) + Sense(感知) | 双关有趣、记忆点强 | 偏抽象、需上下文才能理解 |
+
+  **我的推荐**：① **SysPulse**（对外发布首选——短/专业/独特）> ② DockVitals（安全保守——怕撞名就撞不到但也平平）。
+  也可以你给一个偏好的方向（中文寓意？简短？幽默？）我再窄化候选。
+  **需你拍板**这个再动（涉及仓库改名 + 全仓字符串联动）。
 
 ### 能力扩展
 
@@ -131,13 +148,16 @@
 
 - [x] **移除分支 `claude/optimistic-einstein-eb4c31`** — 已删（2026-07-23）：删前校验该分支**已完全并入 main**
   （`origin/main..` 0 独有提交、tip 是 main 祖先），无未合并工作丢失；远端 + 本地跟踪分支均已删，仅剩 `main`（was 135a0d9）。
-- [ ] **清理 CLAUDE 相关历史** — 移除提交历史中与 CLAUDE 相关的痕迹（需确认清理范围与是否 force-push 影响他人）。
+- [ ] **清理 CLAUDE 相关历史（方案 A：只 strip 9 条 co-author 尾注）** — 用户已确认（2026-07-23）：单人仓，
+  `szhaozechen@tencent.com` = 用户自己。"别的不管"。**仅**删 `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
+  尾注（9 条），不动 CLAUDE.md/`.claude/`。待执行 — filter-branch + force-push。
 - [x] **完善 README.md** — 已改（2026-07-23）：`README.md` 重写为**英文主页**（顶部 `中文说明 →` 跳转、
   badges、Features/Requirements/Install/Build/架构/文档/Credits），作者署名 AtomAntzzz；新增
   `README.zh-CN.md` 中文对照（顶部 `English →` 回跳）。清掉旧「规划阶段」表述，Release/WinGet 标注为待办(R4b)、
   未编造 LICENSE / 死链。
-- [ ] **移除 Contributors 中的 claude** — ⚠ **重分类为「需用户决策」**（2026-07-23）：无 `CONTRIBUTORS` 文件，
-  GitHub 贡献者列表由**提交作者**生成，剔除 claude 需**改写提交作者 + force-push** 共享仓——与下文「清理 CLAUDE
-  提交历史」是同一操作。自主循环**跳过此项**，与历史清理**一起**待用户确认范围/force-push 影响后再做。
+- [ ] **移除 Contributors 中的 claude** — 同上一项同一操作。strip 尾注后 force-push，GitHub 自动刷新贡献者名单。
 - [ ] **上架 Release 包** — 发布安装器/扩展产物到 GitHub Release。
-- [ ] **开放 donate** — 增加捐赠入口（需用户提供收款渠道/偏好）。
+- [x] **开放 donate（框架已就绪，待用户填渠道）** — 已建（2026-07-23）：`.github/FUNDING.yml` 模板含所有主流渠道注释
+  （GitHub Sponsors / Ko-fi / Buy Me a Coffee / Patreon / 爱发电 / 支付宝/微信收款码链接），README 英/中两版底部分别
+  加了 `## Support` 节指向 FUNDING.yml。**用户只需取消对应行注释 + 填入 ID/链接，提交即生效**（仓库自动出现 Sponsor 按钮）。
+  也接受直接放收款码图片（放 `.github/` 或根目录后在 FUNDING.yml 贴 raw URL）。

@@ -70,3 +70,8 @@ powershell -ExecutionPolicy Bypass -File installer/build.ps1
 
 - 传感器后端：[LibreHardwareMonitorLib](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)（MPL-2.0）。
 - 作者：**AtomAntzzz**
+
+## 赞助
+
+如果 SensorMonitor 对你有帮助，欢迎支持项目。可用渠道见 [`.github/FUNDING.yml`](.github/FUNDING.yml)
+——取消对应行注释并填入你的 ID 即可，提交后仓库自动出现 Sponsor 按钮。
