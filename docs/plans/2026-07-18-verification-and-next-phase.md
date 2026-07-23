@@ -131,7 +131,10 @@
 
 - [ ] **移除分支 `claude/optimistic-einstein-eb4c31`** — 删除该远端分支。
 - [ ] **清理 CLAUDE 相关历史** — 移除提交历史中与 CLAUDE 相关的痕迹（需确认清理范围与是否 force-push 影响他人）。
-- [ ] **完善 README.md** — 英文主页 + 提供中文说明跳转链接。
+- [x] **完善 README.md** — 已改（2026-07-23）：`README.md` 重写为**英文主页**（顶部 `中文说明 →` 跳转、
+  badges、Features/Requirements/Install/Build/架构/文档/Credits），作者署名 AtomAntzzz；新增
+  `README.zh-CN.md` 中文对照（顶部 `English →` 回跳）。清掉旧「规划阶段」表述，Release/WinGet 标注为待办(R4b)、
+  未编造 LICENSE / 死链。
 - [ ] **移除 Contributors 中的 claude** — ⚠ **重分类为「需用户决策」**（2026-07-23）：无 `CONTRIBUTORS` 文件，
   GitHub 贡献者列表由**提交作者**生成，剔除 claude 需**改写提交作者 + force-push** 共享仓——与下文「清理 CLAUDE
   提交历史」是同一操作。自主循环**跳过此项**，与历史清理**一起**待用户确认范围/force-push 影响后再做。
