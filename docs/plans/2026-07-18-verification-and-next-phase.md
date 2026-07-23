@@ -117,7 +117,9 @@
 - [x] **作者名改为 AtomAntzzz** — 已改（2026-07-23）：MSIX `Package.appxmanifest` 的 `PublisherDisplayName`
   与 Inno `SensorMonitor.iss` 的 `AppPublisher` 均 `A Lone Developer`→`AtomAntzzz`。**未动** `Identity Publisher="CN=SensorMonitor Dev"`
   ——那是签名证书 subject，须与证书一致，非作者展示名。
-- [ ] **打包图标资产** — 待产出所需**格式/尺寸/存放路径**清单（MSIX 需一组 PNG 资产，Inno 安装器需 `.ico`）。
+- [x] **打包图标资产清单** — 已产出（2026-07-23）：`docs/references/icon-assets.md`。列清母版(1024²透明PNG)、
+  MSIX `Assets/` 各 PNG（现存均为 VS 模板占位，含精确像素表 + scale/targetsize 建议）、Inno `SetupIconFile`
+  与 Host `<ApplicationIcon>` 所需 `.ico`(16–256)。**待用户提供母版图**后即可脚本化导出收尾。
 
 ### R4b 与驱动自动化
 
