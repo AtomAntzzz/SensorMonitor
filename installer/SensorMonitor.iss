@@ -17,7 +17,7 @@
 AppId={{7A2E6B84-3C1D-4E5F-9A70-5E4C0B9D2F11}}
 AppName=Sensor Monitor
 AppVersion={#MyVersion}
-AppPublisher=A Lone Developer
+AppPublisher=AtomAntzzz
 DefaultDirName={autopf}\SensorMonitor
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin

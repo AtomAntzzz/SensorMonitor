@@ -114,8 +114,10 @@
 
 ### 打包与作者信息
 
-- [ ] **打包图标 + 作者名修改** — 作者名统一改为 **AtomAntzzz**。图标：待确认所需**格式/尺寸/存放路径**
-  （MSIX 需要一组 PNG 资产，Inno 安装器需要 `.ico`；先产出"要哪些图、什么格式、放哪个目录"的清单给用户）。
+- [x] **作者名改为 AtomAntzzz** — 已改（2026-07-23）：MSIX `Package.appxmanifest` 的 `PublisherDisplayName`
+  与 Inno `SensorMonitor.iss` 的 `AppPublisher` 均 `A Lone Developer`→`AtomAntzzz`。**未动** `Identity Publisher="CN=SensorMonitor Dev"`
+  ——那是签名证书 subject，须与证书一致，非作者展示名。
+- [ ] **打包图标资产** — 待产出所需**格式/尺寸/存放路径**清单（MSIX 需一组 PNG 资产，Inno 安装器需 `.ico`）。
 
 ### R4b 与驱动自动化
 
