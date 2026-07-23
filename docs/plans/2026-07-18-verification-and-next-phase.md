@@ -129,7 +129,8 @@
 
 ### GitHub / 开源发布
 
-- [ ] **移除分支 `claude/optimistic-einstein-eb4c31`** — 删除该远端分支。
+- [x] **移除分支 `claude/optimistic-einstein-eb4c31`** — 已删（2026-07-23）：删前校验该分支**已完全并入 main**
+  （`origin/main..` 0 独有提交、tip 是 main 祖先），无未合并工作丢失；远端 + 本地跟踪分支均已删，仅剩 `main`（was 135a0d9）。
 - [ ] **清理 CLAUDE 相关历史** — 移除提交历史中与 CLAUDE 相关的痕迹（需确认清理范围与是否 force-push 影响他人）。
 - [x] **完善 README.md** — 已改（2026-07-23）：`README.md` 重写为**英文主页**（顶部 `中文说明 →` 跳转、
   badges、Features/Requirements/Install/Build/架构/文档/Credits），作者署名 AtomAntzzz；新增
