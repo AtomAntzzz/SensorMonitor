@@ -134,9 +134,11 @@
 - [x] **作者名改为 AtomAntzzz** — 已改（2026-07-23）：MSIX `Package.appxmanifest` 的 `PublisherDisplayName`
   与 Inno `SensorMonitor.iss` 的 `AppPublisher` 均 `A Lone Developer`→`AtomAntzzz`。**未动** `Identity Publisher="CN=SensorMonitor Dev"`
   ——那是签名证书 subject，须与证书一致，非作者展示名。
-- [x] **打包图标资产清单** — 已产出（2026-07-23）：`docs/references/icon-assets.md`。列清母版(1024²透明PNG)、
-  MSIX `Assets/` 各 PNG（现存均为 VS 模板占位，含精确像素表 + scale/targetsize 建议）、Inno `SetupIconFile`
-  与 Host `<ApplicationIcon>` 所需 `.ico`(16–256)。**待用户提供母版图**后即可脚本化导出收尾。
+- [x] **打包图标资产清单 + 占位图** — 已产出（2026-07-23）：`docs/references/icon-assets.md` 清单。**占位图已生成**
+  （暗底圆角方 + 青色脉冲波形线，Pillow 脚本化导出）：母版 `assets/icons/master-1024.png`（1024² 透明 PNG）、
+  MSIX `Assets/` 各 PNG（替换 VS 模板占位）、多尺寸 `.ico`（16–256，放 `installer/SensorMonitor.ico` +
+  `src/SensorMonitor.Host/SensorMonitor.Host.ico`）。**Host csproj 已加 `<ApplicationIcon>`**、
+  **Inno `.iss` 已加 `SetupIconFile`** —— 下次构建安装器即生效。后续有正式设计直接换母版脚本重导即可。
 
 ### R4b 与驱动自动化
 
@@ -148,14 +150,15 @@
 
 - [x] **移除分支 `claude/optimistic-einstein-eb4c31`** — 已删（2026-07-23）：删前校验该分支**已完全并入 main**
   （`origin/main..` 0 独有提交、tip 是 main 祖先），无未合并工作丢失；远端 + 本地跟踪分支均已删，仅剩 `main`（was 135a0d9）。
-- [ ] **清理 CLAUDE 相关历史（方案 A：只 strip 9 条 co-author 尾注）** — 用户已确认（2026-07-23）：单人仓，
-  `szhaozechen@tencent.com` = 用户自己。"别的不管"。**仅**删 `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
-  尾注（9 条），不动 CLAUDE.md/`.claude/`。待执行 — filter-branch + force-push。
+- [x] **清理 CLAUDE 相关历史（方案 A：只 strip 9 条 co-author 尾注）** — 已执行（2026-07-23）：`git filter-branch --msg-filter`
+  strip 9 条 `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` 尾注，`--force-with-lease` 推送。
+  main 已 0 尾注，CLAUDE.md/`.claude/` 原样保留（"别的不管"）。
 - [x] **完善 README.md** — 已改（2026-07-23）：`README.md` 重写为**英文主页**（顶部 `中文说明 →` 跳转、
   badges、Features/Requirements/Install/Build/架构/文档/Credits），作者署名 AtomAntzzz；新增
   `README.zh-CN.md` 中文对照（顶部 `English →` 回跳）。清掉旧「规划阶段」表述，Release/WinGet 标注为待办(R4b)、
   未编造 LICENSE / 死链。
-- [ ] **移除 Contributors 中的 claude** — 同上一项同一操作。strip 尾注后 force-push，GitHub 自动刷新贡献者名单。
+- [x] **移除 Contributors 中的 claude** — 已完成（2026-07-23）：同上一项。force-push 后 GitHub 自动刷新，贡献者仅余
+  AtomAntzzz + szhaozechen（用户另一身份）。
 - [ ] **上架 Release 包** — 发布安装器/扩展产物到 GitHub Release。
 - [x] **开放 donate（框架已就绪，待用户填渠道）** — 已建（2026-07-23）：`.github/FUNDING.yml` 模板含所有主流渠道注释
   （GitHub Sponsors / Ko-fi / Buy Me a Coffee / Patreon / 爱发电 / 支付宝/微信收款码链接），README 英/中两版底部分别
