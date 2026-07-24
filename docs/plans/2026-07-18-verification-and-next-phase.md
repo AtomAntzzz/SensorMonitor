@@ -119,7 +119,21 @@
 
 - [ ] **接入更多可用传感器** — 在现有 CPU 频率/CPU 温度/GPU 温度/主板温度之外，梳理 `LibreHardwareMonitorLib`
   还能稳定读到的传感器（风扇转速、功耗、电压、内存/存储温度、GPU 频率/占用等），评估可用性与呈现方式。
-- [ ] **多语言支持（i18n）** — 扩展 UI 文案、band 标题/字幕、设置页、空态提示等的本地化框架（至少中/英）。
+- [ ] **多语言支持（i18n）** — 为对外发布做的本地化，**至少中(zh-CN) / 英(en-US)**，跟随系统 UI 语言、
+  设置页可手动覆盖。落地要点：
+  - **机制**：MSIX/WinUI 用 `.resw` 资源 + `ResourceLoader`（`Package.appxmanifest` `<Resources>` 已是 `x-generate`，
+    天然支持多语言资源包）；纯 Host 侧若需可用 `.resx` + `ResourceManager`。先抽一层 `L(key)` 统一取串。
+  - **待抽取的硬编码中文串（现全散在代码里）**：
+    - Dock band 类别名/名词：`SlotCategories.cs`（"CPU 频率""核心""温度点"…）
+    - 空态提示：`EmptyHint`/`MissingHint`（"需 PawnIO 驱动""无此传感器""无 GPU 温度传感器"）
+    - 过期/未运行提示：`SensorSlotBand.cs`（"⚠ 数据已 Ns 未更新""Host 未运行""启动 Host"）
+    - 设置页：`SettingsManager.cs`（刷新间隔/温度单位标签）
+    - 浏览页 / 选择页：`SysPulseExtensionPage.cs`、`SensorPickerPage.cs`
+    - 启动命令：`LaunchHostCommand.cs`
+    - 安装器 `StatusMsg`（Inno 可用 `[Messages]`/`[CustomMessages]` 多语言，或先只英化）
+    - MSIX `DisplayName`/`Description`（可按语言给多份）
+  - **温度单位**已是设置项（°C/°F），与 locale 默认联动可选做。
+  - **范围收敛**：先做扩展 UI 两语，安装器/文档本地化按需后置。
 
 ### 打包与作者信息
 
