@@ -58,3 +58,28 @@ band 渲染规则（由 `ICommandItem.Command` 类型决定）：
 - PowerToys：需带 Dock 功能的版本（2026-03 后发布）；以设置里存在 Dock 页为准。
 - `Microsoft.CommandPalette.Extensions` NuGet ≥ **0.9.260303001**。
 - Toolkit 常用类：`CommandProvider` / `CommandItem` / `ListItem` / `InvokableCommand` / `WrappedDockItem`（`Microsoft.CommandPalette.Extensions.Toolkit` 命名空间）。
+
+## i18n（多语言，2026-07-24 交付）
+
+扩展 UI 走 **`.resx` + `System.Resources.ResourceManager`**（不是 WinUI，用 `.resw`/`ResourceLoader`
+反而多依赖；官方 CmdPal Toolkit 自身就用 `.resx`）。三件套在 `src/SysPulseExtension/SysPulseExtension/Localization/`：
+
+- `Strings.resx` — **英文 = 中性/默认**，随主程序集内嵌（trim/single-file 安全）。
+- `Strings.zh-CN.resx` — 中文，出卫星程序集 `zh-CN/SysPulseExtension.resources.dll`。
+- `L.cs` — `L.Get("Key")` / `L.Format("Key", arg)`；`Get` 按 `CultureInfo.CurrentUICulture` 选串（缺键回落键名，
+  不抛异常），`Format` 的**数值格式化**用 `CurrentCulture`（与原插值串一致，避 CA1305）。
+
+**语言跟随系统**：扩展跑在用户会话里，`CurrentUICulture` 即用户 Windows 显示语言，零检测代码；v1 无设置页手动覆盖。
+
+**加一个字符串**：在 `Strings.resx` 和**每个** `Strings.<lang>.resx` 各加一条 `<data name="Key">`，调用处写 `L.Get("Key")`。
+**加一门语言**：新增 `Strings.<culture>.resx`（键与英文版对齐），SDK 自动出对应卫星程序集，无需改 `.csproj`。
+
+坑与验证：
+
+- `ResourceManager` baseName 必须 = `RootNamespace + 文件夹 + 文件名` = **`SysPulseExtension.Localization.Strings`**；
+  写错不报错、只静默回落英文（漏翻假象）。改动后可反射校验清单名：
+  主程序集应有 `SysPulseExtension.Localization.Strings.resources`，zh-CN 卫星应有 `...Strings.zh-CN.resources`。
+- **必须在打包裁剪版实测**：Release 是 `PublishTrimmed`+`PublishSingleFile`+`IsAotCompatible`。英文为中性内嵌无忧；
+  zh-CN 卫星须确认被打进单文件且能加载——把 Windows 显示语言切成中文、净启 CmdPal（`x-cmdpal://reload` 会累加 band，
+  见坑 #9）看 dock/浏览页/选择页/设置页是否出中文。这是本仓库 trim 雷区（曾坑过反射式 STJ）的既定验证动作。
+- **不本地化**：品牌名 `SysPulse`、各 `Id`/`Command.Id`、Segoe 字形 `\uExxx`、`°C`/`°F` 符号、上游传感器名/`Type` 枚举（动态英文源）。

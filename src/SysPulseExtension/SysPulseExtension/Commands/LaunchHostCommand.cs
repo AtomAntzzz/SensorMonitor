@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using SysPulseExtension.Localization;
 
 namespace SysPulseExtension.Commands;
 
@@ -11,7 +12,7 @@ internal sealed partial class LaunchHostCommand : InvokableCommand
 {
     public LaunchHostCommand()
     {
-        Name = "启动传感器 Host";
+        Name = L.Get("LaunchHost");
         Icon = new IconInfo("\uE768");  // Play 字形：启动 Host
         Id = "com.syspulse.launchhost";
     }

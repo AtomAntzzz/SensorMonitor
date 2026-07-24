@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using SysPulseExtension.Ipc;
+using SysPulseExtension.Localization;
 using CmdPalSettings = Microsoft.CommandPalette.Extensions.Toolkit.Settings;
 
 namespace SysPulseExtension.Settings;
@@ -22,19 +23,19 @@ internal sealed class SettingsManager : JsonSettingsManager
         FilePath = Path.Combine(dir, "settings.json");
 
         var refreshInterval = new ChoiceSetSetting(
-            "refreshInterval", "刷新间隔", "Dock 读数轮询间隔",
+            "refreshInterval", L.Get("Setting_RefreshInterval_Label"), L.Get("Setting_RefreshInterval_Desc"),
             [
-                new ChoiceSetSetting.Choice("1 秒", "1000"),
-                new ChoiceSetSetting.Choice("2 秒", "2000"),
-                new ChoiceSetSetting.Choice("5 秒", "5000"),
+                new ChoiceSetSetting.Choice(L.Get("Setting_Interval_1s"), "1000"),
+                new ChoiceSetSetting.Choice(L.Get("Setting_Interval_2s"), "2000"),
+                new ChoiceSetSetting.Choice(L.Get("Setting_Interval_5s"), "5000"),
             ])
         { Value = "1000" };
 
         var tempUnit = new ChoiceSetSetting(
-            "tempUnit", "温度单位", "温度显示单位",
+            "tempUnit", L.Get("Setting_TempUnit_Label"), L.Get("Setting_TempUnit_Desc"),
             [
-                new ChoiceSetSetting.Choice("摄氏 °C", "C"),
-                new ChoiceSetSetting.Choice("华氏 °F", "F"),
+                new ChoiceSetSetting.Choice(L.Get("Setting_Celsius"), "C"),
+                new ChoiceSetSetting.Choice(L.Get("Setting_Fahrenheit"), "F"),
             ])
         { Value = "C" };
 

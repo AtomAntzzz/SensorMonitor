@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using SysPulseExtension.Ipc;
+using SysPulseExtension.Localization;
 
 namespace SysPulseExtension.Dock;
 
@@ -73,7 +74,7 @@ internal sealed partial class SensorSlotBand : ListItem
         catch (Exception ex)
         {
             // Timer 线程的未处理异常会带崩扩展进程（F3）——宁可显示错误也不崩。
-            Title = "内部错误";
+            Title = L.Get("InternalError");
             Subtitle = ex.GetType().Name;
         }
     }
@@ -83,7 +84,7 @@ internal sealed partial class SensorSlotBand : ListItem
         var snap = SnapshotCache.Current;
         if (snap?.Sensors is null)
         {
-            SetDisplay("--", "Host 未运行");
+            SetDisplay("--", L.Get("HostNotRunning"));
             return;
         }
         var current = SlotLogic.Resolve(_cat.GetCandidates(snap.Sensors), _currentKey);
@@ -97,7 +98,7 @@ internal sealed partial class SensorSlotBand : ListItem
         }
         var age = DateTimeOffset.Now - snap.Timestamp;
         var subtitle = age > TimeSpan.FromSeconds(10)
-            ? $"⚠ 数据已 {age.TotalSeconds:F0}s 未更新"                  // F7 过期提示优先
+            ? L.Format("StaleData_Format", age.TotalSeconds)            // F7 过期提示优先
             : (current.IsDefault ? _cat.DisplayName : current.Label);   // spec：显示规则
         var (dispVal, dispUnit) = Settings.TempDisplay.Convert(current.Value, current.Unit);
         SetDisplay($"{dispVal:F0}{dispUnit}", subtitle);
@@ -124,7 +125,7 @@ internal sealed partial class CycleSlotCommand : InvokableCommand
     {
         _band = band;
         _delta = delta;
-        Name = (delta > 0 ? "下一个" : "上一个") + cat.CycleNoun;
+        Name = L.Format(delta > 0 ? "CycleNext_Format" : "CyclePrev_Format", cat.CycleNoun);
         Icon = new IconInfo(delta > 0 ? "\uE893" : "\uE892");  // Next / Previous 字形
         // Dock 项 Command.Id 为空会被静默忽略（坑 #3），上下文命令一并给足。
         Id = $"com.syspulse.{cat.Id}.{(delta > 0 ? "next" : "prev")}";

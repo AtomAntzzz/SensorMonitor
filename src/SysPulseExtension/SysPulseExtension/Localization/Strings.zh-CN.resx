@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- Simplified Chinese (zh-CN) — satellite assembly. Keys mirror Strings.resx. -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Cat_CpuClock_Name" xml:space="preserve">
+    <value>CPU 频率</value>
+  </data>
+  <data name="Cat_CpuTemp_Name" xml:space="preserve">
+    <value>CPU 温度</value>
+  </data>
+  <data name="Cat_GpuTemp_Name" xml:space="preserve">
+    <value>GPU 温度</value>
+  </data>
+  <data name="Cat_BoardTemp_Name" xml:space="preserve">
+    <value>主板温度</value>
+  </data>
+  <data name="Noun_Core" xml:space="preserve">
+    <value>核心</value>
+  </data>
+  <data name="Noun_TempPoint" xml:space="preserve">
+    <value>温度点</value>
+  </data>
+  <data name="Label_AllCoreMax" xml:space="preserve">
+    <value>全核最大</value>
+  </data>
+  <data name="Hint_NeedPawnIo" xml:space="preserve">
+    <value>需 PawnIO 驱动</value>
+  </data>
+  <data name="Hint_NoSuchSensor" xml:space="preserve">
+    <value>无此传感器</value>
+  </data>
+  <data name="Hint_NoGpuTempSensor" xml:space="preserve">
+    <value>无 GPU 温度传感器</value>
+  </data>
+  <data name="HostNotRunning" xml:space="preserve">
+    <value>Host 未运行</value>
+  </data>
+  <data name="PressEnterStartHost" xml:space="preserve">
+    <value>回车启动传感器 Host</value>
+  </data>
+  <data name="InternalError" xml:space="preserve">
+    <value>内部错误</value>
+  </data>
+  <data name="StaleData_Format" xml:space="preserve">
+    <value>⚠ 数据已 {0:F0}s 未更新</value>
+  </data>
+  <data name="CycleNext_Format" xml:space="preserve">
+    <value>下一个{0}</value>
+  </data>
+  <data name="CyclePrev_Format" xml:space="preserve">
+    <value>上一个{0}</value>
+  </data>
+  <data name="PageName_Open" xml:space="preserve">
+    <value>打开</value>
+  </data>
+  <data name="PageName_Select" xml:space="preserve">
+    <value>选择</value>
+  </data>
+  <data name="PickerTitle_Format" xml:space="preserve">
+    <value>选择{0}</value>
+  </data>
+  <data name="Current" xml:space="preserve">
+    <value>当前</value>
+  </data>
+  <data name="SetAsCurrent" xml:space="preserve">
+    <value>选为当前</value>
+  </data>
+  <data name="CpuSensorsInvisible" xml:space="preserve">
+    <value>⚠ CPU 传感器不可见</value>
+  </data>
+  <data name="PawnIoInstallHint" xml:space="preserve">
+    <value>需安装 PawnIO 驱动（回车打开官网），安装后重启 Host</value>
+  </data>
+  <data name="LaunchHost" xml:space="preserve">
+    <value>启动传感器 Host</value>
+  </data>
+  <data name="Setting_RefreshInterval_Label" xml:space="preserve">
+    <value>刷新间隔</value>
+  </data>
+  <data name="Setting_RefreshInterval_Desc" xml:space="preserve">
+    <value>Dock 读数轮询间隔</value>
+  </data>
+  <data name="Setting_Interval_1s" xml:space="preserve">
+    <value>1 秒</value>
+  </data>
+  <data name="Setting_Interval_2s" xml:space="preserve">
+    <value>2 秒</value>
+  </data>
+  <data name="Setting_Interval_5s" xml:space="preserve">
+    <value>5 秒</value>
+  </data>
+  <data name="Setting_TempUnit_Label" xml:space="preserve">
+    <value>温度单位</value>
+  </data>
+  <data name="Setting_TempUnit_Desc" xml:space="preserve">
+    <value>温度显示单位</value>
+  </data>
+  <data name="Setting_Celsius" xml:space="preserve">
+    <value>摄氏 °C</value>
+  </data>
+  <data name="Setting_Fahrenheit" xml:space="preserve">
+    <value>华氏 °F</value>
+  </data>
+</root>

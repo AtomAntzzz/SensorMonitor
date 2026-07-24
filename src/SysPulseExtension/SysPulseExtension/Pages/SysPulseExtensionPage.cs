@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using SysPulseExtension.Ipc;
+using SysPulseExtension.Localization;
 
 namespace SysPulseExtension;
 
@@ -13,7 +14,7 @@ internal sealed partial class SysPulseExtensionPage : ListPage
     {
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
         Title = "SysPulse";
-        Name = "Open";
+        Name = L.Get("PageName_Open");
     }
 
     public override IListItem[] GetItems()
@@ -22,7 +23,7 @@ internal sealed partial class SysPulseExtensionPage : ListPage
         if (snapshot?.Sensors is null)
         {
             return [new ListItem(new Commands.LaunchHostCommand())
-                { Title = "Host 未运行", Subtitle = "回车启动传感器 Host" }];
+                { Title = L.Get("HostNotRunning"), Subtitle = L.Get("PressEnterStartHost") }];
         }
 
         var items = new List<IListItem>();
@@ -34,8 +35,8 @@ internal sealed partial class SysPulseExtensionPage : ListPage
         {
             items.Add(new ListItem(new OpenUrlCommand("https://pawnio.eu/"))
             {
-                Title = "⚠ CPU 传感器不可见",
-                Subtitle = "需安装 PawnIO 驱动（回车打开官网），安装后重启 Host",
+                Title = L.Get("CpuSensorsInvisible"),
+                Subtitle = L.Get("PawnIoInstallHint"),
             });
         }
 

@@ -1,5 +1,5 @@
-; SysPulse.iss —— 由 installer/build.ps1 用 /D 传入外部路径/变量后编译。
-; 不手工双击编译（缺 /D 变量会失败）。
+; SysPulse.iss — compiled by installer/build.ps1, which passes external paths/vars via /D.
+; Do not compile by double-clicking (missing /D vars will fail).
 
 #ifndef MyVersion
   #define MyVersion "0.0.2.0"
@@ -31,28 +31,28 @@ UninstallDisplayIcon={app}\Host\SysPulse.Host.exe
 WizardStyle=modern
 
 [Files]
-; 自包含 Host → {app}\Host
+; Self-contained Host -> {app}\Host
 Source: "{#MyHostDir}\*"; DestDir: "{app}\Host"; Flags: recursesubdirs createallsubdirs ignoreversion
-; 扩展 msix + 签名证书公钥 → 临时目录，装完删
+; Extension msix + signing certificate public key -> temp dir, deleted after install
 Source: "{#MyMsix}"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "{#MyCer}";  DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Run]
-; 0) 清理旧 SensorMonitor 残留（改名 SysPulse 后首次升级时清理；纯新装无害——schtasks /Delete /F 即使任务不存在也返回 0）
+; 0) Clean up leftover SensorMonitor (first upgrade after the SysPulse rename; harmless on a fresh install — schtasks /Delete /F returns 0 even if the task does not exist)
 Filename: "{sys}\schtasks.exe"; Parameters: "/End /TN SensorMonitor.Host"; Flags: runhidden waituntilterminated
 Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN SensorMonitor.Host /F"; Flags: runhidden waituntilterminated
 Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Get-AppxPackage *SensorMonitorExtension* | Remove-AppxPackage; Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like '*SensorMonitorExtension*' | ForEach-Object { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName }"""; Flags: runhidden waituntilterminated
-; 1) 信任 dev 证书（换真实链到受信根的证书时删掉本行）
-Filename: "{sys}\certutil.exe"; Parameters: "-addstore -f TrustedPeople ""{tmp}\{#MyCerName}"""; Flags: runhidden waituntilterminated; StatusMsg: "信任签名证书…"
-; 2) 注册计划任务：跑装好的 Host，TaskInstaller 以 Environment.ProcessPath 作 /TR，即本 {app}\Host 路径
-Filename: "{app}\Host\SysPulse.Host.exe"; Parameters: "--install-task"; Flags: runhidden waituntilterminated; StatusMsg: "注册后台服务…"
-; 3) 全机预置扩展 MSIX + 当前用户即时注册
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Add-AppxProvisionedPackage -Online -PackagePath '{tmp}\{#MyMsixName}' -SkipLicense; Add-AppxPackage -Path '{tmp}\{#MyMsixName}' -ForceUpdateFromAnyVersion -ForceApplicationShutdown"""; Flags: runhidden waituntilterminated; StatusMsg: "注册命令面板扩展…"
-; 4) 立即启动 Host（免等下次登录）
+; 1) Trust the dev certificate (delete this line when using a certificate that chains to a trusted root)
+Filename: "{sys}\certutil.exe"; Parameters: "-addstore -f TrustedPeople ""{tmp}\{#MyCerName}"""; Flags: runhidden waituntilterminated; StatusMsg: "Trusting signing certificate..."
+; 2) Register the scheduled task: runs the installed Host; TaskInstaller uses Environment.ProcessPath as /TR, i.e. this {app}\Host path
+Filename: "{app}\Host\SysPulse.Host.exe"; Parameters: "--install-task"; Flags: runhidden waituntilterminated; StatusMsg: "Registering background service..."
+; 3) Provision the extension MSIX machine-wide + register it for the current user immediately
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Add-AppxProvisionedPackage -Online -PackagePath '{tmp}\{#MyMsixName}' -SkipLicense; Add-AppxPackage -Path '{tmp}\{#MyMsixName}' -ForceUpdateFromAnyVersion -ForceApplicationShutdown"""; Flags: runhidden waituntilterminated; StatusMsg: "Registering Command Palette extension..."
+; 4) Start the Host now (no need to wait for the next sign-in)
 Filename: "{sys}\schtasks.exe"; Parameters: "/Run /TN SysPulse.Host"; Flags: runhidden
 
 [UninstallRun]
-; 停 Host → 删任务 → 移除扩展（当前用户 + 预置）
+; Stop Host -> delete task -> remove the extension (current user + provisioned)
 Filename: "{sys}\schtasks.exe"; Parameters: "/End /TN SysPulse.Host"; Flags: runhidden waituntilterminated; RunOnceId: "EndHost"
 Filename: "{app}\Host\SysPulse.Host.exe"; Parameters: "--uninstall-task"; Flags: runhidden waituntilterminated; RunOnceId: "DelTask"
 Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Get-AppxPackage *SysPulseExtension* | Remove-AppxPackage; Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like '*SysPulseExtension*' | ForEach-Object {{ Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName }"""; Flags: runhidden waituntilterminated; RunOnceId: "RemovePkg"
@@ -65,7 +65,7 @@ Type: filesandordirs; Name: "{commonappdata}\SysPulse"
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var rc: Integer;
 begin
-  // 升级覆盖前停掉在跑的 Host（新旧任务名均尝试），避免锁死 {app}\Host\SysPulse.Host.exe。
+  // Before overwriting on upgrade, stop the running Host (try both old and new task names) to avoid locking {app}\Host\SysPulse.Host.exe.
   Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN SensorMonitor.Host', '', SW_HIDE, ewWaitUntilTerminated, rc);
   Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN SysPulse.Host', '', SW_HIDE, ewWaitUntilTerminated, rc);
   Result := '';

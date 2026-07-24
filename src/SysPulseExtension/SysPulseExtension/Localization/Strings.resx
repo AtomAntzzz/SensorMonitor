@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Neutral (default) culture = English. This file is embedded in the main assembly.
+    zh-CN values live in Strings.zh-CN.resx (satellite assembly). Keys are shared.
+    Adding a string: add a <data> entry here AND in every Strings.<lang>.resx, then
+    reference it via L.Get("Key") / L.Format("Key", arg).
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Cat_CpuClock_Name" xml:space="preserve">
+    <value>CPU Clock</value>
+  </data>
+  <data name="Cat_CpuTemp_Name" xml:space="preserve">
+    <value>CPU Temp</value>
+  </data>
+  <data name="Cat_GpuTemp_Name" xml:space="preserve">
+    <value>GPU Temp</value>
+  </data>
+  <data name="Cat_BoardTemp_Name" xml:space="preserve">
+    <value>Board Temp</value>
+  </data>
+  <data name="Noun_Core" xml:space="preserve">
+    <value>Core</value>
+  </data>
+  <data name="Noun_TempPoint" xml:space="preserve">
+    <value>Temp point</value>
+  </data>
+  <data name="Label_AllCoreMax" xml:space="preserve">
+    <value>All-core max</value>
+  </data>
+  <data name="Hint_NeedPawnIo" xml:space="preserve">
+    <value>PawnIO driver required</value>
+  </data>
+  <data name="Hint_NoSuchSensor" xml:space="preserve">
+    <value>No such sensor</value>
+  </data>
+  <data name="Hint_NoGpuTempSensor" xml:space="preserve">
+    <value>No GPU temp sensor</value>
+  </data>
+  <data name="HostNotRunning" xml:space="preserve">
+    <value>Host not running</value>
+  </data>
+  <data name="PressEnterStartHost" xml:space="preserve">
+    <value>Press Enter to start the sensor Host</value>
+  </data>
+  <data name="InternalError" xml:space="preserve">
+    <value>Internal error</value>
+  </data>
+  <data name="StaleData_Format" xml:space="preserve">
+    <value>⚠ No update for {0:F0}s</value>
+  </data>
+  <data name="CycleNext_Format" xml:space="preserve">
+    <value>Next {0}</value>
+  </data>
+  <data name="CyclePrev_Format" xml:space="preserve">
+    <value>Previous {0}</value>
+  </data>
+  <data name="PageName_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="PageName_Select" xml:space="preserve">
+    <value>Select</value>
+  </data>
+  <data name="PickerTitle_Format" xml:space="preserve">
+    <value>Select {0}</value>
+  </data>
+  <data name="Current" xml:space="preserve">
+    <value>Current</value>
+  </data>
+  <data name="SetAsCurrent" xml:space="preserve">
+    <value>Set as current</value>
+  </data>
+  <data name="CpuSensorsInvisible" xml:space="preserve">
+    <value>⚠ CPU sensors not visible</value>
+  </data>
+  <data name="PawnIoInstallHint" xml:space="preserve">
+    <value>Install the PawnIO driver (Enter opens the site), then restart the Host</value>
+  </data>
+  <data name="LaunchHost" xml:space="preserve">
+    <value>Start sensor Host</value>
+  </data>
+  <data name="Setting_RefreshInterval_Label" xml:space="preserve">
+    <value>Refresh interval</value>
+  </data>
+  <data name="Setting_RefreshInterval_Desc" xml:space="preserve">
+    <value>Dock reading poll interval</value>
+  </data>
+  <data name="Setting_Interval_1s" xml:space="preserve">
+    <value>1 second</value>
+  </data>
+  <data name="Setting_Interval_2s" xml:space="preserve">
+    <value>2 seconds</value>
+  </data>
+  <data name="Setting_Interval_5s" xml:space="preserve">
+    <value>5 seconds</value>
+  </data>
+  <data name="Setting_TempUnit_Label" xml:space="preserve">
+    <value>Temperature unit</value>
+  </data>
+  <data name="Setting_TempUnit_Desc" xml:space="preserve">
+    <value>Temperature display unit</value>
+  </data>
+  <data name="Setting_Celsius" xml:space="preserve">
+    <value>Celsius °C</value>
+  </data>
+  <data name="Setting_Fahrenheit" xml:space="preserve">
+    <value>Fahrenheit °F</value>
+  </data>
+</root>

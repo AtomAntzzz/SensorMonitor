@@ -3,6 +3,7 @@ using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using SysPulseExtension.Dock;
 using SysPulseExtension.Ipc;
+using SysPulseExtension.Localization;
 
 namespace SysPulseExtension.Pages;
 
@@ -19,8 +20,8 @@ internal sealed partial class SensorPickerPage : ListPage
     {
         _band = band;
         _cat = cat;
-        Title = "选择" + cat.DisplayName;
-        Name = "选择";
+        Title = L.Format("PickerTitle_Format", cat.DisplayName);
+        Name = L.Get("PageName_Select");
         Icon = new IconInfo(cat.IconGlyph);
         Id = $"com.syspulse.{cat.Id}.picker";  // 非空 Id（坑 #3）
     }
@@ -35,7 +36,7 @@ internal sealed partial class SensorPickerPage : ListPage
         if (snap?.Sensors is null)
         {
             return [new ListItem(new Commands.LaunchHostCommand())
-                { Title = "Host 未运行", Subtitle = "回车启动传感器 Host" }];
+                { Title = L.Get("HostNotRunning"), Subtitle = L.Get("PressEnterStartHost") }];
         }
         var candidates = _cat.GetCandidates(snap.Sensors);
         if (candidates.Count == 0)
@@ -54,7 +55,7 @@ internal sealed partial class SensorPickerPage : ListPage
             {
                 // 当前项标题前置普通 Unicode ✓（避免与列表焦点高亮混淆；不碰 PUA 字形）。
                 Title = (isCurrent ? "✓ " : "") + $"{c.Label} {dispVal:F0}{dispUnit}",
-                Subtitle = isCurrent ? "当前" : "",
+                Subtitle = isCurrent ? L.Get("Current") : "",
             });
         }
         return [.. items];
@@ -71,7 +72,7 @@ internal sealed partial class SelectSensorCommand : InvokableCommand
     {
         _band = band;
         _key = key;
-        Name = "选为当前";
+        Name = L.Get("SetAsCurrent");
         Id = $"com.syspulse.select.{key}";  // 非空 Id（坑 #3）
     }
 

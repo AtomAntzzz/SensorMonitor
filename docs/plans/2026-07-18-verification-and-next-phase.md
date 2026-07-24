@@ -119,10 +119,16 @@
 
 - [ ] **接入更多可用传感器** — 在现有 CPU 频率/CPU 温度/GPU 温度/主板温度之外，梳理 `LibreHardwareMonitorLib`
   还能稳定读到的传感器（风扇转速、功耗、电压、内存/存储温度、GPU 频率/占用等），评估可用性与呈现方式。
-- [ ] **多语言支持（i18n）** — 为对外发布做的本地化，**至少中(zh-CN) / 英(en-US)**，跟随系统 UI 语言、
-  设置页可手动覆盖。落地要点：
-  - **机制**：MSIX/WinUI 用 `.resw` 资源 + `ResourceLoader`（`Package.appxmanifest` `<Resources>` 已是 `x-generate`，
-    天然支持多语言资源包）；纯 Host 侧若需可用 `.resx` + `ResourceManager`。先抽一层 `L(key)` 统一取串。
+- [x] **多语言支持（i18n）** — 已交付（2026-07-24）：扩展 UI 做成 **中(zh-CN)/英(en-US) 双语**，
+  **英文为中性/默认**、跟随系统 UI 语言（v1 **不做**设置页手动覆盖）；**安装器文案改为全英文**（非本地化）。
+  抽出 `Localization/L.cs`（`L.Get`/`L.Format`）+ `Strings.resx`(EN，内嵌主程序集) / `Strings.zh-CN.resx`(ZH，出卫星程序集)，
+  各调用点改 `L.Get("Key")`；`SlotCategories`/`SensorSlotBand`/两页/`SettingsManager`/`LaunchHostCommand` 全量替换，
+  两处拼接（`"选择"+名`、`上/下一个+名词`）改 `{0}` 模板。**机制最终定为 `.resx` + `ResourceManager`，非下方原设想的
+  `.resw`/`ResourceLoader`**——实测扩展是 WinRT COM 服务（**非 WinUI**），官方 CmdPal Toolkit 本身即用 `.resx`；
+  `.resw` 的唯一独占好处（本地化 MSIX manifest）本期不需要。落地/维护见 `docs/references/cmdpal-extension.md` 的「i18n」节。
+  下列原规划要点存档（机制项已被上文取代）：
+  - ~~**机制**：MSIX/WinUI 用 `.resw` 资源 + `ResourceLoader`~~（已改用 `.resx`，理由见上）。原文：`Package.appxmanifest`
+    `<Resources>` 已是 `x-generate`，纯 Host 侧若需可用 `.resx` + `ResourceManager`。先抽一层 `L(key)` 统一取串。
   - **待抽取的硬编码中文串（现全散在代码里）**：
     - Dock band 类别名/名词：`SlotCategories.cs`（"CPU 频率""核心""温度点"…）
     - 空态提示：`EmptyHint`/`MissingHint`（"需 PawnIO 驱动""无此传感器""无 GPU 温度传感器"）

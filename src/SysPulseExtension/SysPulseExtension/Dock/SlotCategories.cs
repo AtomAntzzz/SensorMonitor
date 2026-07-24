@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using SysPulseExtension.Ipc;
+using SysPulseExtension.Localization;
 
 namespace SysPulseExtension.Dock;
 
@@ -16,7 +17,7 @@ internal static class SlotCategories
 
     /// <summary>
     /// 提权硬件驱动（PawnIO/ring0）就绪信号：存在**有效**的 CPU 温度或主板 LPC 读数即判驱动在工作
-    /// （某类别仍空即"无此传感器"而非缺驱动，区分空态提示用）。
+    /// （某类别仍空即L.Get("Hint_NoSuchSensor")而非缺驱动，区分空态提示用）。
     /// 只认温度/LPC：CPU 负载走性能计数器、免驱动亦有效，不能当驱动信号；
     /// 且未装驱动时 CPU 温度传感器仍在快照里但读 0，故须按值判而非仅按存在判。
     /// </summary>
@@ -26,23 +27,23 @@ internal static class SlotCategories
 
     public static readonly SlotCategory[] All =
     [
-        new("cpuclock", "CPU 频率", "核心", "\uEC4A", "需 PawnIO 驱动", "无此传感器", s =>
+        new("cpuclock", L.Get("Cat_CpuClock_Name"), L.Get("Noun_Core"), "\uEC4A", L.Get("Hint_NeedPawnIo"), L.Get("Hint_NoSuchSensor"), s =>
         {
             var clocks = s.Where(r => r.Type == "Clock" && IsValid(r.Value) && IsCpu(r)).OrderBy(r => r.Id).ToList();
             if (clocks.Count == 0) return [];
             var list = new List<SlotCandidate>
             {
-                new(SlotLogic.MaxKey, "全核最大", clocks.Max(r => r.Value), clocks[0].Unit, IsDefault: true),
+                new(SlotLogic.MaxKey, L.Get("Label_AllCoreMax"), clocks.Max(r => r.Value), clocks[0].Unit, IsDefault: true),
             };
             list.AddRange(clocks.Select(r => new SlotCandidate(r.Id, r.Name, r.Value, r.Unit, false)));
             return list;
         }),
-        new("cputemp", "CPU 温度", "温度点", "\uE950", "需 PawnIO 驱动", "无此传感器", s =>
+        new("cputemp", L.Get("Cat_CpuTemp_Name"), L.Get("Noun_TempPoint"), "\uE950", L.Get("Hint_NeedPawnIo"), L.Get("Hint_NoSuchSensor"), s =>
             Temps(s, IsCpu, r => r.Name == "CPU Package")),
         // GPU 不依赖 PawnIO，两态提示同字（HasDriverData 分支对 GPU 无实义）。
-        new("gputemp", "GPU 温度", "温度点", "\uE7F4", "无 GPU 温度传感器", "无 GPU 温度传感器", s =>
+        new("gputemp", L.Get("Cat_GpuTemp_Name"), L.Get("Noun_TempPoint"), "\uE7F4", L.Get("Hint_NoGpuTempSensor"), L.Get("Hint_NoGpuTempSensor"), s =>
             Temps(s, r => r.Id.StartsWith("/gpu"), r => r.Name == "GPU Core")),
-        new("boardtemp", "主板温度", "温度点", "\uE9CA", "需 PawnIO 驱动", "无此传感器", s =>
+        new("boardtemp", L.Get("Cat_BoardTemp_Name"), L.Get("Noun_TempPoint"), "\uE9CA", L.Get("Hint_NeedPawnIo"), L.Get("Hint_NoSuchSensor"), s =>
             Temps(s, r => r.Id.StartsWith("/lpc"), r => false)),  // 默认=排序首项
     ];
 
